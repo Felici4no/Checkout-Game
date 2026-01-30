@@ -1,6 +1,7 @@
 import { GameState } from './GameState';
 import { StockBot } from './StockBot';
 import { MarketingSystem } from './MarketingSystem';
+import { CapacitySystem } from './CapacitySystem';
 
 export type SupplierType = 'fast' | 'cheap';
 
@@ -49,6 +50,7 @@ export class EconomyEngine {
     private reputationScore = 1.0; // 1.0 = Good, 0.5 = Average, 0.0 = Poor
     private stockBot: StockBot | null = null;
     private marketingSystem: MarketingSystem | null = null;
+    private capacitySystem: CapacitySystem | null = null;
 
     // Daily financial summary for player feedback
     public lastDailySummary: {
@@ -56,9 +58,22 @@ export class EconomyEngine {
         costs: number;
         interest: number;
         net: number;
-        lostOrders: number; // NEW: for causal feedback
-        reputationImpact: number; // NEW: reputation change from lost orders
-    } = { revenue: 0, costs: 0, interest: 0, net: 0, lostOrders: 0, reputationImpact: 0 };
+        lostOrders: number; // Lost to stock shortage
+        reputationImpact: number; // Reputation change from lost orders
+        processedOrders: number; // Actually processed
+        overflowCreated: number; // Overflow created today
+        lostToCapacity: number; // Lost due to capacity limit
+    } = {
+            revenue: 0,
+            costs: 0,
+            interest: 0,
+            net: 0,
+            lostOrders: 0,
+            reputationImpact: 0,
+            processedOrders: 0,
+            overflowCreated: 0,
+            lostToCapacity: 0,
+        };
 
     constructor(gameState: GameState, config: EconomyConfig = DEFAULT_ECONOMY_CONFIG) {
         this.gameState = gameState;
@@ -81,8 +96,17 @@ export class EconomyEngine {
         this.marketingSystem = marketingSystem;
     }
 
+    setCapacitySystem(capacitySystem: CapacitySystem): void {
+        this.capacitySystem = capacitySystem;
+    }
+
     processDailyEconomy(): void {
         const state = this.gameState.data;
+
+        // Advance capacity system day (shift overflow)
+        if (this.capacitySystem) {
+            this.capacitySystem.advanceDay();
+        }
 
         // Reset daily summary
         this.lastDailySummary = {
@@ -91,7 +115,10 @@ export class EconomyEngine {
             interest: 0,
             net: 0,
             lostOrders: 0,
-            reputationImpact: 0
+            reputationImpact: 0,
+            processedOrders: 0,
+            overflowCreated: 0,
+            lostToCapacity: 0,
         };
 
         // 1. Generate visits (controlled RNG - less dispersion)
@@ -119,42 +146,70 @@ export class EconomyEngine {
         // Clamp conversion rate
         conversionRate = Math.max(0.001, Math.min(0.15, conversionRate));
 
-        // 3. Calculate orders (limited by stock)
+        // 3. Calculate potential orders
         const potentialOrders = Math.floor(visits * conversionRate);
-        const actualOrders = Math.min(potentialOrders, state.stock);
-        const lostOrders = potentialOrders - actualOrders;
 
-        // Track lost orders
-        this.lastDailySummary.lostOrders = lostOrders;
+        // 4. Apply stock limit
+        const stockLimitedOrders = Math.min(potentialOrders, state.stock);
+        const lostToStock = potentialOrders - stockLimitedOrders;
 
-        // 4. Apply reputation penalty for lost orders (especially during marketing)
-        if (lostOrders > 0) {
+        // 5. Apply capacity limit
+        let actualOrders = stockLimitedOrders;
+        let lostToCapacity = 0;
+        let overflowCreated = 0;
+
+        if (this.capacitySystem) {
+            const processResult = this.capacitySystem.processOrders(stockLimitedOrders);
+            actualOrders = processResult.processed;
+            overflowCreated = processResult.overflow;
+            lostToCapacity = processResult.lostToCapacity;
+        }
+
+        // Track in summary
+        this.lastDailySummary.processedOrders = actualOrders;
+        this.lastDailySummary.overflowCreated = overflowCreated;
+        this.lastDailySummary.lostToCapacity = lostToCapacity;
+        this.lastDailySummary.lostOrders = lostToStock; // Stock-based losses
+
+        // 6. Apply reputation penalty for lost orders (stock shortage)
+        if (lostToStock > 0) {
             const isMarketingActive = this.marketingSystem?.isMarketingActive() || false;
-            // Harsher penalty during marketing campaigns/viral
             const basePenalty = -0.01;
             const marketingMultiplier = isMarketingActive ? 2.0 : 1.0;
-            const lostOrdersFactor = Math.min(lostOrders / 10, 3.0); // Cap at 3x
+            const lostOrdersFactor = Math.min(lostToStock / 10, 3.0);
             const reputationPenalty = basePenalty * marketingMultiplier * lostOrdersFactor;
 
             this.adjustReputation(reputationPenalty);
             this.lastDailySummary.reputationImpact = reputationPenalty;
         }
 
-        // 5. Process sales
+        // 7. Apply reputation penalty for capacity losses (harsher)
+        if (lostToCapacity > 0) {
+            const isMarketingActive = this.marketingSystem?.isMarketingActive() || false;
+            const basePenalty = -0.015; // Slightly harsher than stock shortage
+            const marketingMultiplier = isMarketingActive ? 2.0 : 1.0;
+            const lostOrdersFactor = Math.min(lostToCapacity / 10, 3.0);
+            const capacityPenalty = basePenalty * marketingMultiplier * lostOrdersFactor;
+
+            this.adjustReputation(capacityPenalty);
+            this.lastDailySummary.reputationImpact += capacityPenalty;
+        }
+
+        // 8. Process sales
         const revenue = actualOrders * state.price;
         this.gameState.updateCash(revenue);
         this.gameState.updateStock(-actualOrders);
         this.gameState.state.totalRevenue += revenue;
         this.lastDailySummary.revenue = revenue;
 
-        // 6. Apply daily costs
+        // 9. Apply daily costs
         this.gameState.updateCash(-this.config.dailyFixedCost);
         this.lastDailySummary.costs = this.config.dailyFixedCost;
 
-        // 7. Apply interest on debt (1% daily - reduced from 5%)
+        // 10. Apply interest on debt (1% daily)
         let interest = 0;
         if (state.debt > 0) {
-            interest = state.debt * 0.01; // 1% daily
+            interest = state.debt * 0.01;
             this.gameState.state.debt += interest;
             this.gameState.updateCash(-interest);
         }
@@ -163,28 +218,28 @@ export class EconomyEngine {
         // Calculate net
         this.lastDailySummary.net = revenue - this.config.dailyFixedCost - interest;
 
-        // 8. Update metrics
+        // 11. Update metrics
         this.gameState.setDailyMetrics(visits, actualOrders, conversionRate * 100);
 
-        // 9. Natural reputation recovery (+0.005/day if > 0.5)
+        // 12. Natural reputation recovery (+0.005/day if > 0.5)
         if (this.reputationScore > 0.5 && this.reputationScore < 1.0) {
             this.reputationScore = Math.min(1.0, this.reputationScore + 0.005);
         }
 
-        // 10. Supplier reputation impact
+        // 13. Supplier reputation impact
         if (this.supplier === 'fast') {
             this.adjustReputation(this.config.fastSupplierReputationBonus);
         } else {
             this.adjustReputation(this.config.cheapSupplierReputationPenalty);
         }
 
-        // 11. Update reputation display
+        // 14. Update reputation display
         this.updateReputationDisplay();
 
-        // 12. Emit summary event
+        // 15. Emit summary event
         this.gameState.emit('daily-summary');
 
-        // 13. Process marketing system (campaign countdown, viral check)
+        // 16. Process marketing system (campaign countdown, viral check)
         if (this.marketingSystem) {
             this.marketingSystem.processDailyEffects();
 
@@ -196,7 +251,7 @@ export class EconomyEngine {
             }
         }
 
-        // 14. Run StockBot automation (if installed)
+        // 17. Run StockBot automation (if installed)
         if (this.stockBot && this.stockBot.isInstalled()) {
             const result = this.stockBot.checkAndBuyStock();
             if (result.reason) {
