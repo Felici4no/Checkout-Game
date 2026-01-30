@@ -414,14 +414,37 @@ export class CheckoutApp {
       <strong style="color: ${netColor}">L: ${formatCurrency(summary.net)}</strong>
     `;
 
-        // Add lost orders warning if any
+        // Add capacity breakdown
+        if (summary.processedOrders > 0 || summary.overflowCreated > 0 || summary.lostToCapacity > 0) {
+            summaryText += `<br><span style="font-size: 8px;">`;
+            summaryText += `Proc: ${summary.processedOrders}`;
+            if (summary.overflowCreated > 0) {
+                summaryText += ` | <span style="color: #F90;">Fila: ${summary.overflowCreated}</span>`;
+            }
+            if (summary.lostToCapacity > 0) {
+                summaryText += ` | <span style="color: #C00;">Perdidos(cap): ${summary.lostToCapacity}</span>`;
+            }
+            summaryText += `</span>`;
+        }
+
+        // Add lost orders warning if any (stock shortage)
         if (summary.lostOrders > 0) {
             const repImpact = summary.reputationImpact;
             const repText = repImpact < 0 ? `${(repImpact * 100).toFixed(1)}%` : '';
-            summaryText += `<br><span style="color: #C00; font-weight: bold;">⚠️ ${summary.lostOrders} pedidos perdidos (Rep: ${repText})</span>`;
+            summaryText += `<br><span style="color: #C00; font-weight: bold;">⚠️ ${summary.lostOrders} pedidos perdidos(estoque) (Rep: ${repText})</span>`;
         }
 
         this.dailySummaryElement.innerHTML = summaryText;
+
+        // Update capacity indicator if exists
+        const capacityIndicator = document.getElementById('capacity-indicator');
+        if (capacityIndicator && (this.gameState as any).capacitySystem) {
+            const capacitySystem = (this.gameState as any).capacitySystem;
+            const capacity = capacitySystem.getCapacity();
+            const queue = capacitySystem.getTotalOverflow();
+            const queueColor = queue > 0 ? '#F90' : '#606060';
+            capacityIndicator.innerHTML = `Cap: ${capacity}/d | <span style="color: ${queueColor};">Fila: ${queue}</span>`;
+        }
     }
 
     private updateStock(): void {
