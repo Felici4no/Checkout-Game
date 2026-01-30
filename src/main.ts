@@ -5,6 +5,7 @@ import { EconomyEngine } from './game/EconomyEngine';
 import { EventSystem } from './game/EventSystem';
 import { StockBot } from './game/StockBot';
 import { MarketingSystem } from './game/MarketingSystem';
+import { CapacitySystem } from './game/CapacitySystem';
 import { Desktop } from './ui/Desktop';
 import { SystemClock } from './ui/SystemClock';
 import { DayProgressBar } from './ui/DayProgressBar';
@@ -15,6 +16,7 @@ import { ViralPopup } from './ui/ViralPopup';
 import { CheckoutApp } from './apps/CheckoutApp';
 import { BankApp } from './apps/BankApp';
 import { MarketingApp } from './apps/MarketingApp';
+import { CapacityApp } from './apps/CapacityApp';
 
 class Game {
     private gameState: GameState;
@@ -23,10 +25,12 @@ class Game {
     private eventSystem: EventSystem;
     private stockBot: StockBot;
     private marketingSystem: MarketingSystem;
+    private capacitySystem: CapacitySystem;
     private desktop: Desktop;
     private checkoutApp: CheckoutApp;
     private bankApp: BankApp;
     private marketingApp: MarketingApp;
+    private capacityApp: CapacityApp;
     private desktopElement: HTMLElement | null = null;
     private systemClock: SystemClock | null = null;
     private dayProgressBar: DayProgressBar;
@@ -39,6 +43,7 @@ class Game {
         this.eventSystem = new EventSystem(this.gameState, this.economyEngine);
         this.stockBot = new StockBot(this.gameState);
         this.marketingSystem = new MarketingSystem(this.gameState);
+        this.capacitySystem = new CapacitySystem(this.gameState);
         this.timeSystem = new TimeSystem(this.gameState);
         this.timeSystem.setEconomyEngine(this.economyEngine);
         this.timeSystem.setEventSystem(this.eventSystem);
@@ -46,12 +51,18 @@ class Game {
         // Connect systems
         this.economyEngine.setStockBot(this.stockBot);
         this.economyEngine.setMarketingSystem(this.marketingSystem);
+        this.economyEngine.setCapacitySystem(this.capacitySystem);
+
+        // Store capacity system in gameState for UI access
+        (this.gameState as any).capacitySystem = this.capacitySystem;
+        (this.gameState as any).economyEngine = this.economyEngine;
 
         // Build UI
         this.desktop = new Desktop();
         this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine, this.stockBot);
         this.bankApp = new BankApp(this.gameState);
         this.marketingApp = new MarketingApp(this.gameState, this.marketingSystem);
+        this.capacityApp = new CapacityApp(this.gameState, this.capacitySystem);
         this.dayProgressBar = new DayProgressBar();
         this.dayTransitionOverlay = new DayTransitionOverlay();
 
@@ -77,9 +88,11 @@ class Game {
         this.desktop.appendChild(this.checkoutApp.getWindow().getElement());
         this.desktop.appendChild(this.bankApp.getWindow().getElement());
         this.desktop.appendChild(this.marketingApp.getWindow().getElement());
+        this.desktop.appendChild(this.capacityApp.getWindow().getElement());
         this.checkoutApp.getWindow().hide();
         this.bankApp.getWindow().hide();
         this.marketingApp.getWindow().hide();
+        this.capacityApp.getWindow().hide();
 
         // Add day progress bar to desktop
         this.desktopElement.appendChild(this.dayProgressBar.getElement());
@@ -100,19 +113,29 @@ class Game {
         this.desktop.addIcon('Checkout', '💼', () => {
             this.bankApp.getWindow().hide();
             this.marketingApp.getWindow().hide();
+            this.capacityApp.getWindow().hide();
             this.checkoutApp.show();
         });
 
         this.desktop.addIcon('Banco', '🏦', () => {
             this.checkoutApp.getWindow().hide();
             this.marketingApp.getWindow().hide();
+            this.capacityApp.getWindow().hide();
             this.bankApp.show();
         });
 
         this.desktop.addIcon('Marketing', '📢', () => {
             this.checkoutApp.getWindow().hide();
             this.bankApp.getWindow().hide();
+            this.capacityApp.getWindow().hide();
             this.marketingApp.show();
+        });
+
+        this.desktop.addIcon('Capacidade', '⚙️', () => {
+            this.checkoutApp.getWindow().hide();
+            this.bankApp.getWindow().hide();
+            this.marketingApp.getWindow().hide();
+            this.capacityApp.show();
         });
     }
 

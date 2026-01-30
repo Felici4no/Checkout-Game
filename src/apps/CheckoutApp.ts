@@ -257,10 +257,25 @@ export class CheckoutApp {
         activityLabel.style.marginBottom = '4px';
         activityLabel.textContent = 'ATIVIDADE';
 
+        // Capacity indicator (read-only, small)
+        const capacityIndicator = document.createElement('div');
+        capacityIndicator.style.cssText = `
+      font-size: 8px;
+      padding: 3px 6px;
+      margin-bottom: 6px;
+      background: #F0F0F0;
+      border: 1px solid #A0A0A0;
+      font-family: 'Courier New', monospace;
+      color: #606060;
+    `;
+        capacityIndicator.id = 'capacity-indicator';
+        capacityIndicator.innerHTML = 'Cap: 20/d | Fila: 0';
+
         content.appendChild(header);
         content.appendChild(this.bankruptcyWarningElement);
         content.appendChild(metricsGrid);
         content.appendChild(this.dailySummaryElement);
+        content.appendChild(capacityIndicator);
         content.appendChild(actionsPanel);
         content.appendChild(activityLabel);
         content.appendChild(this.activityTicker.getElement());
