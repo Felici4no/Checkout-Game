@@ -4,14 +4,17 @@ import { TimeSystem } from './game/TimeSystem';
 import { EconomyEngine } from './game/EconomyEngine';
 import { EventSystem } from './game/EventSystem';
 import { StockBot } from './game/StockBot';
+import { MarketingSystem } from './game/MarketingSystem';
 import { Desktop } from './ui/Desktop';
 import { SystemClock } from './ui/SystemClock';
 import { DayProgressBar } from './ui/DayProgressBar';
 import { DayTransitionOverlay } from './ui/DayTransitionOverlay';
 import { GameOverModal } from './ui/GameOverModal';
 import { EventPopup } from './ui/EventPopup';
+import { ViralPopup } from './ui/ViralPopup';
 import { CheckoutApp } from './apps/CheckoutApp';
 import { BankApp } from './apps/BankApp';
+import { MarketingApp } from './apps/MarketingApp';
 
 class Game {
     private gameState: GameState;
@@ -19,9 +22,11 @@ class Game {
     private economyEngine: EconomyEngine;
     private eventSystem: EventSystem;
     private stockBot: StockBot;
+    private marketingSystem: MarketingSystem;
     private desktop: Desktop;
     private checkoutApp: CheckoutApp;
     private bankApp: BankApp;
+    private marketingApp: MarketingApp;
     private desktopElement: HTMLElement | null = null;
     private systemClock: SystemClock | null = null;
     private dayProgressBar: DayProgressBar;
@@ -33,17 +38,20 @@ class Game {
         this.economyEngine = new EconomyEngine(this.gameState);
         this.eventSystem = new EventSystem(this.gameState, this.economyEngine);
         this.stockBot = new StockBot(this.gameState);
+        this.marketingSystem = new MarketingSystem(this.gameState);
         this.timeSystem = new TimeSystem(this.gameState);
         this.timeSystem.setEconomyEngine(this.economyEngine);
         this.timeSystem.setEventSystem(this.eventSystem);
 
-        // Connect StockBot to EconomyEngine
+        // Connect systems
         this.economyEngine.setStockBot(this.stockBot);
+        this.economyEngine.setMarketingSystem(this.marketingSystem);
 
         // Build UI
         this.desktop = new Desktop();
         this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine, this.stockBot);
         this.bankApp = new BankApp(this.gameState);
+        this.marketingApp = new MarketingApp(this.gameState, this.marketingSystem);
         this.dayProgressBar = new DayProgressBar();
         this.dayTransitionOverlay = new DayTransitionOverlay();
 
@@ -68,8 +76,10 @@ class Game {
         // Add windows to desktop (hidden initially)
         this.desktop.appendChild(this.checkoutApp.getWindow().getElement());
         this.desktop.appendChild(this.bankApp.getWindow().getElement());
+        this.desktop.appendChild(this.marketingApp.getWindow().getElement());
         this.checkoutApp.getWindow().hide();
         this.bankApp.getWindow().hide();
+        this.marketingApp.getWindow().hide();
 
         // Add day progress bar to desktop
         this.desktopElement.appendChild(this.dayProgressBar.getElement());
@@ -89,12 +99,20 @@ class Game {
         // Add desktop icons
         this.desktop.addIcon('Checkout', '💼', () => {
             this.bankApp.getWindow().hide();
+            this.marketingApp.getWindow().hide();
             this.checkoutApp.show();
         });
 
         this.desktop.addIcon('Banco', '🏦', () => {
             this.checkoutApp.getWindow().hide();
+            this.marketingApp.getWindow().hide();
             this.bankApp.show();
+        });
+
+        this.desktop.addIcon('Marketing', '📢', () => {
+            this.checkoutApp.getWindow().hide();
+            this.bankApp.getWindow().hide();
+            this.marketingApp.show();
         });
     }
 
@@ -110,6 +128,11 @@ class Game {
         // Listen for events
         this.gameState.on('event-occurred', () => {
             this.handleEvent();
+        });
+
+        // Listen for viral events
+        this.gameState.on('viral-occurred', () => {
+            this.handleViralEvent();
         });
 
         // Listen for time progress
@@ -154,6 +177,17 @@ class Game {
 
         const popup = new EventPopup(event, () => {
             // Event acknowledged
+        });
+        popup.show(this.desktopElement);
+    }
+
+    private handleViralEvent(): void {
+        if (!this.desktopElement) return;
+        const message = (this.gameState as any).lastViralMessage;
+        if (!message) return;
+
+        const popup = new ViralPopup(message, () => {
+            // Viral acknowledged
         });
         popup.show(this.desktopElement);
     }
