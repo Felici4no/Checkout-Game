@@ -1,4 +1,5 @@
 import { GameState } from './GameState';
+import { StockBot } from './StockBot';
 
 export type SupplierType = 'fast' | 'cheap';
 
@@ -45,6 +46,7 @@ export class EconomyEngine {
     private config: EconomyConfig;
     private supplier: SupplierType = 'fast';
     private reputationScore = 1.0; // 1.0 = Good, 0.5 = Average, 0.0 = Poor
+    private stockBot: StockBot | null = null;
 
     // Daily financial summary for player feedback
     public lastDailySummary: {
@@ -65,6 +67,10 @@ export class EconomyEngine {
 
     getSupplier(): SupplierType {
         return this.supplier;
+    }
+
+    setStockBot(stockBot: StockBot): void {
+        this.stockBot = stockBot;
     }
 
     processDailyEconomy(): void {
@@ -139,6 +145,15 @@ export class EconomyEngine {
 
         // 11. Emit summary event
         this.gameState.emit('daily-summary');
+
+        // 12. Run StockBot automation (if installed)
+        if (this.stockBot && this.stockBot.isInstalled()) {
+            const result = this.stockBot.checkAndBuyStock();
+            if (result.reason) {
+                this.gameState.emit('stockbot-action');
+                (this.gameState as any).lastStockBotAction = result.reason;
+            }
+        }
     }
 
     adjustReputation(delta: number): void {

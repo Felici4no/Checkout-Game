@@ -3,6 +3,7 @@ import { GameState } from './game/GameState';
 import { TimeSystem } from './game/TimeSystem';
 import { EconomyEngine } from './game/EconomyEngine';
 import { EventSystem } from './game/EventSystem';
+import { StockBot } from './game/StockBot';
 import { Desktop } from './ui/Desktop';
 import { SystemClock } from './ui/SystemClock';
 import { DayProgressBar } from './ui/DayProgressBar';
@@ -17,6 +18,7 @@ class Game {
     private timeSystem: TimeSystem;
     private economyEngine: EconomyEngine;
     private eventSystem: EventSystem;
+    private stockBot: StockBot;
     private desktop: Desktop;
     private checkoutApp: CheckoutApp;
     private bankApp: BankApp;
@@ -30,13 +32,17 @@ class Game {
         this.gameState = new GameState();
         this.economyEngine = new EconomyEngine(this.gameState);
         this.eventSystem = new EventSystem(this.gameState, this.economyEngine);
+        this.stockBot = new StockBot(this.gameState);
         this.timeSystem = new TimeSystem(this.gameState);
         this.timeSystem.setEconomyEngine(this.economyEngine);
         this.timeSystem.setEventSystem(this.eventSystem);
 
+        // Connect StockBot to EconomyEngine
+        this.economyEngine.setStockBot(this.stockBot);
+
         // Build UI
         this.desktop = new Desktop();
-        this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine);
+        this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine, this.stockBot);
         this.bankApp = new BankApp(this.gameState);
         this.dayProgressBar = new DayProgressBar();
         this.dayTransitionOverlay = new DayTransitionOverlay();

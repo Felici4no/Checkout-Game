@@ -1,5 +1,6 @@
 import { GameState } from '../game/GameState';
 import { EconomyEngine, SupplierType } from '../game/EconomyEngine';
+import { StockBot } from '../game/StockBot';
 import { Window } from '../ui/Window';
 import { ActivityTicker } from '../ui/ActivityTicker';
 import { animateNumber, formatCurrency, formatPercentage, createButton } from '../utils/helpers';
@@ -8,6 +9,7 @@ export class CheckoutApp {
     private window: Window;
     private gameState: GameState;
     private economyEngine: EconomyEngine;
+    private stockBot: StockBot;
     private activityTicker: ActivityTicker;
     private activityIntervalId: number | null = null;
 
@@ -24,6 +26,7 @@ export class CheckoutApp {
     private supplierDisplay: HTMLElement | null = null;
     private dailySummaryElement: HTMLElement | null = null;
     private bankruptcyWarningElement: HTMLElement | null = null;
+    private stockBotButton: HTMLButtonElement | null = null;
 
     // Previous values for animations
     private previousCash = 500;
@@ -32,14 +35,15 @@ export class CheckoutApp {
     private previousOrders = 0;
     private previousConversion = 0;
 
-    constructor(gameState: GameState, economyEngine: EconomyEngine) {
+    constructor(gameState: GameState, economyEngine: EconomyEngine, stockBot: StockBot) {
         this.gameState = gameState;
         this.economyEngine = economyEngine;
+        this.stockBot = stockBot;
         this.activityTicker = new ActivityTicker();
         this.window = new Window({
             title: `${gameState.data.storeName} — Checkout`,
             width: 600,
-            height: 600,
+            height: 650,
             x: 80,
             y: 60,
         });
@@ -196,6 +200,7 @@ export class CheckoutApp {
         supplierRow.style.display = 'flex';
         supplierRow.style.justifyContent = 'space-between';
         supplierRow.style.alignItems = 'center';
+        supplierRow.style.marginBottom = '8px';
 
         const supplierLabel = document.createElement('span');
         supplierLabel.textContent = 'Fornecedor:';
@@ -218,11 +223,28 @@ export class CheckoutApp {
         supplierRow.appendChild(supplierLabel);
         supplierRow.appendChild(supplierControls);
 
+        // StockBot purchase
+        const stockBotRow = document.createElement('div');
+        stockBotRow.style.display = 'flex';
+        stockBotRow.style.justifyContent = 'space-between';
+        stockBotRow.style.alignItems = 'center';
+        stockBotRow.style.marginTop = '12px';
+        stockBotRow.style.paddingTop = '8px';
+        stockBotRow.style.borderTop = '1px solid #808080';
+
+        const stockBotLabel = document.createElement('span');
+        stockBotLabel.innerHTML = '🤖 <strong>StockBot v1.0</strong><br><span style="font-size: 9px;">Auto-compra quando < 20</span>';
+
+        this.stockBotButton = createButton('Comprar $250', () => this.buyStockBot());
+        stockBotRow.appendChild(stockBotLabel);
+        stockBotRow.appendChild(this.stockBotButton);
+
         actionsPanel.appendChild(actionsTitle);
         actionsPanel.appendChild(buyStockRow);
         actionsPanel.appendChild(priceRow);
         actionsPanel.appendChild(supplierRow);
         actionsPanel.appendChild(this.supplierDisplay);
+        actionsPanel.appendChild(stockBotRow);
 
         // Activity ticker
         const activityLabel = document.createElement('div');
@@ -238,6 +260,9 @@ export class CheckoutApp {
         content.appendChild(actionsPanel);
         content.appendChild(activityLabel);
         content.appendChild(this.activityTicker.getElement());
+
+        // Update StockBot button state
+        this.updateStockBotButton();
     }
 
     private createMetric(label: string, value: string): HTMLElement {
@@ -271,6 +296,8 @@ export class CheckoutApp {
         this.gameState.on('pause-changed', () => this.updatePauseButton());
         this.gameState.on('price-changed', () => this.updatePriceDisplay());
         this.gameState.on('daily-summary', () => this.updateDailySummary());
+        this.gameState.on('stockbot-activated', () => this.updateStockBotButton());
+        this.gameState.on('stockbot-action', () => this.handleStockBotAction());
     }
 
     private startActivitySimulation(): void {
@@ -291,6 +318,38 @@ export class CheckoutApp {
             this.activityTicker.addMessage('Estoque comprado: 50 unidades', 'success');
         } else {
             this.activityTicker.addMessage('Caixa insuficiente para comprar estoque', 'error');
+        }
+    }
+
+    private buyStockBot(): void {
+        if (this.stockBot.isInstalled()) {
+            this.activityTicker.addMessage('StockBot já instalado', 'info');
+            return;
+        }
+
+        if (this.gameState.data.cash >= 250) {
+            this.gameState.updateCash(-250);
+            this.stockBot.activate();
+            this.activityTicker.addMessage('🤖 StockBot v1.0 instalado! Auto-compra ativada.', 'success');
+        } else {
+            this.activityTicker.addMessage('Caixa insuficiente para comprar StockBot', 'error');
+        }
+    }
+
+    private updateStockBotButton(): void {
+        if (!this.stockBotButton) return;
+
+        if (this.stockBot.isInstalled()) {
+            this.stockBotButton.textContent = '✓ Instalado';
+            this.stockBotButton.disabled = true;
+            this.stockBotButton.style.opacity = '0.5';
+        }
+    }
+
+    private handleStockBotAction(): void {
+        const action = (this.gameState as any).lastStockBotAction;
+        if (action) {
+            this.activityTicker.addMessage(action, action.includes('insuficiente') ? 'warning' : 'info');
         }
     }
 
