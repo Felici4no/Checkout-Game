@@ -74,6 +74,28 @@ export class CheckoutApp {
         header.appendChild(this.dayElement);
         header.appendChild(controls);
 
+        // Challenge indicator (collapsed by default)
+        const challengeIndicator = document.createElement('div');
+        challengeIndicator.id = 'challenge-indicator';
+        challengeIndicator.style.cssText = `
+      font-size: 7px;
+      padding: 4px 6px;
+      margin-bottom: 6px;
+      background: #F0F0F0;
+      border: 1px solid #A0A0A0;
+      cursor: pointer;
+      color: #606060;
+      display: none;
+    `;
+        challengeIndicator.innerHTML = '🎯 Desafio: Nenhum';
+
+        // Toggle expanded/collapsed on click
+        let expanded = false;
+        challengeIndicator.addEventListener('click', () => {
+            expanded = !expanded;
+            this.updateChallengeIndicator(expanded);
+        });
+
         // Bankruptcy warning (hidden by default)
         this.bankruptcyWarningElement = document.createElement('div');
         this.bankruptcyWarningElement.style.display = 'none';
@@ -272,6 +294,7 @@ export class CheckoutApp {
         capacityIndicator.innerHTML = 'Cap: 20/d | Fila: 0';
 
         content.appendChild(header);
+        content.appendChild(challengeIndicator);
         content.appendChild(this.bankruptcyWarningElement);
         content.appendChild(metricsGrid);
         content.appendChild(this.dailySummaryElement);
@@ -282,6 +305,35 @@ export class CheckoutApp {
 
         // Update StockBot button state
         this.updateStockBotButton();
+
+        // Update challenge indicator
+        this.updateChallengeIndicator(false);
+    }
+
+    private updateChallengeIndicator(expanded: boolean): void {
+        const challengeIndicator = document.getElementById('challenge-indicator');
+        if (!challengeIndicator) return;
+
+        const challengeSystem = (this.gameState as any).challengeSystem;
+        if (!challengeSystem || !challengeSystem.hasActiveChallenge()) {
+            challengeIndicator.style.display = 'none';
+            return;
+        }
+
+        challengeIndicator.style.display = 'block';
+        const challenge = challengeSystem.getActiveChallenge();
+        const progress = challengeSystem.getProgress();
+        const progressText = challengeSystem.getProgressText();
+
+        if (expanded) {
+            challengeIndicator.innerHTML = `
+        🎯 <strong>${challenge.name}</strong><br>
+        <span style="font-size: 6px;">${challenge.description}</span><br>
+        <span style="font-size: 6px; color: #0A0;">${progressText} (${progress.toFixed(0)}%)</span>
+      `;
+        } else {
+            challengeIndicator.innerHTML = `🎯 ${challenge.shortDesc} - ${progress.toFixed(0)}%`;
+        }
     }
 
     private createMetric(label: string, value: string): HTMLElement {
@@ -471,6 +523,9 @@ export class CheckoutApp {
             const queueColor = queue > 0 ? '#F90' : '#606060';
             capacityIndicator.innerHTML = `Cap: ${capacity}/d | <span style="color: ${queueColor};">Fila: ${queue}</span>`;
         }
+
+        // Update challenge indicator (collapsed)
+        this.updateChallengeIndicator(false);
     }
 
     private updateStock(): void {

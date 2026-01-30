@@ -6,6 +6,7 @@ import { EventSystem } from './game/EventSystem';
 import { StockBot } from './game/StockBot';
 import { MarketingSystem } from './game/MarketingSystem';
 import { CapacitySystem } from './game/CapacitySystem';
+import { ChallengeSystem, ChallengeType } from './game/ChallengeSystem';
 import { Desktop } from './ui/Desktop';
 import { SystemClock } from './ui/SystemClock';
 import { DayProgressBar } from './ui/DayProgressBar';
@@ -13,6 +14,8 @@ import { DayTransitionOverlay } from './ui/DayTransitionOverlay';
 import { GameOverModal } from './ui/GameOverModal';
 import { EventPopup } from './ui/EventPopup';
 import { ViralPopup } from './ui/ViralPopup';
+import { VictoryModal } from './ui/VictoryModal';
+import { ChallengeSelector } from './ui/ChallengeSelector';
 import { CheckoutApp } from './apps/CheckoutApp';
 import { BankApp } from './apps/BankApp';
 import { MarketingApp } from './apps/MarketingApp';
@@ -26,6 +29,7 @@ class Game {
     private stockBot: StockBot;
     private marketingSystem: MarketingSystem;
     private capacitySystem: CapacitySystem;
+    private challengeSystem: ChallengeSystem | null = null;
     private desktop: Desktop;
     private checkoutApp: CheckoutApp;
     private bankApp: BankApp;
@@ -37,6 +41,21 @@ class Game {
     private dayTransitionOverlay: DayTransitionOverlay;
 
     constructor() {
+        // Show challenge selector first
+        this.showChallengeSelector();
+    }
+
+    private showChallengeSelector(): void {
+        const app = document.querySelector<HTMLDivElement>('#app')!;
+
+        const selector = new ChallengeSelector((challenge: ChallengeType) => {
+            this.initializeGame(challenge);
+        });
+
+        selector.show(app);
+    }
+
+    private initializeGame(challenge: ChallengeType): void {
         // Initialize core systems
         this.gameState = new GameState();
         this.economyEngine = new EconomyEngine(this.gameState);
@@ -44,6 +63,7 @@ class Game {
         this.stockBot = new StockBot(this.gameState);
         this.marketingSystem = new MarketingSystem(this.gameState);
         this.capacitySystem = new CapacitySystem(this.gameState);
+        this.challengeSystem = new ChallengeSystem(this.gameState, challenge);
         this.timeSystem = new TimeSystem(this.gameState);
         this.timeSystem.setEconomyEngine(this.economyEngine);
         this.timeSystem.setEventSystem(this.eventSystem);
@@ -53,9 +73,10 @@ class Game {
         this.economyEngine.setMarketingSystem(this.marketingSystem);
         this.economyEngine.setCapacitySystem(this.capacitySystem);
 
-        // Store capacity system in gameState for UI access
+        // Store systems in gameState for UI access
         (this.gameState as any).capacitySystem = this.capacitySystem;
         (this.gameState as any).economyEngine = this.economyEngine;
+        (this.gameState as any).challengeSystem = this.challengeSystem;
 
         // Build UI
         this.desktop = new Desktop();
@@ -171,7 +192,42 @@ class Game {
         // Listen for day changed (after economy processing)
         this.gameState.on('day-changed', () => {
             this.handleDayChanged();
+            this.checkVictory();
         });
+    }
+
+    private checkVictory(): void {
+        if (!this.challengeSystem || !this.challengeSystem.hasActiveChallenge()) return;
+
+        if (this.challengeSystem.checkVictory()) {
+            this.handleVictory();
+        }
+    }
+
+    private handleVictory(): void {
+        if (!this.desktopElement || !this.challengeSystem) return;
+
+        const challenge = this.challengeSystem.getActiveChallenge();
+        const state = this.gameState.data;
+
+        const modal = new VictoryModal(
+            challenge.name,
+            {
+                days: state.currentDay,
+                revenue: state.totalRevenue,
+                cash: state.cash,
+                reputation: state.reputation,
+            },
+            () => {
+                // Continue playing (just close modal)
+            },
+            () => {
+                // Restart game
+                window.location.reload();
+            }
+        );
+
+        modal.show(this.desktopElement);
     }
 
     private updateDayProgress(): void {
