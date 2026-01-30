@@ -2,6 +2,7 @@ import './style.css';
 import { GameState } from './game/GameState';
 import { TimeSystem } from './game/TimeSystem';
 import { Desktop } from './ui/Desktop';
+import { GameOverModal } from './ui/GameOverModal';
 import { CheckoutApp } from './apps/CheckoutApp';
 
 class Game {
@@ -9,6 +10,7 @@ class Game {
     private timeSystem: TimeSystem;
     private desktop: Desktop;
     private checkoutApp: CheckoutApp;
+    private desktopElement: HTMLElement | null = null;
 
     constructor() {
         // Initialize core systems
@@ -34,10 +36,12 @@ class Game {
         monitorScreen.className = 'monitor-screen';
 
         // Add desktop to screen
-        monitorScreen.appendChild(this.desktop.getElement());
+        this.desktopElement = this.desktop.getElement();
+        monitorScreen.appendChild(this.desktopElement);
 
-        // Add Checkout window to desktop
+        // Add Checkout window to desktop (hidden initially)
         this.desktop.appendChild(this.checkoutApp.getWindow().getElement());
+        this.checkoutApp.getWindow().hide();
 
         monitorFrame.appendChild(monitorScreen);
         app.appendChild(monitorFrame);
@@ -46,9 +50,6 @@ class Game {
         this.desktop.addIcon('Checkout', '💼', () => {
             this.checkoutApp.show();
         });
-
-        // Show Checkout app by default
-        this.checkoutApp.show();
     }
 
     private start(): void {
@@ -62,7 +63,13 @@ class Game {
     }
 
     private handleGameOver(): void {
-        alert(`BANKRUPTCY\n\nYour business has failed.\n\nDays Survived: ${this.gameState.data.currentDay}\nFinal Cash: $${this.gameState.data.cash.toFixed(2)}\n\nReload to try again.`);
+        if (!this.desktopElement) return;
+
+        const modal = new GameOverModal(this.gameState, () => {
+            window.location.reload();
+        });
+
+        modal.show(this.desktopElement);
     }
 }
 

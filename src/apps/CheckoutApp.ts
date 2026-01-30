@@ -1,5 +1,6 @@
 import { GameState } from '../game/GameState';
 import { Window } from '../ui/Window';
+import { ActivityTicker } from '../ui/ActivityTicker';
 import { animateNumber, formatCurrency, createButton } from '../utils/helpers';
 
 export class CheckoutApp {
@@ -8,20 +9,24 @@ export class CheckoutApp {
     private cashElement: HTMLElement | null = null;
     private dayElement: HTMLElement | null = null;
     private pauseButton: HTMLButtonElement | null = null;
+    private activityTicker: ActivityTicker;
+    private activityIntervalId: number | null = null;
     private previousCash = 500;
 
     constructor(gameState: GameState) {
         this.gameState = gameState;
+        this.activityTicker = new ActivityTicker();
         this.window = new Window({
             title: `${gameState.data.storeName} — Checkout`,
             width: 500,
-            height: 400,
+            height: 450,
             x: 100,
             y: 80,
         });
 
         this.buildUI();
         this.attachListeners();
+        this.startActivitySimulation();
     }
 
     private buildUI(): void {
@@ -59,6 +64,13 @@ export class CheckoutApp {
         cashMetric.appendChild(cashLabel);
         cashMetric.appendChild(this.cashElement);
 
+        // Activity ticker
+        const activityLabel = document.createElement('div');
+        activityLabel.style.fontSize = '10px';
+        activityLabel.style.fontWeight = 'bold';
+        activityLabel.style.marginTop = '8px';
+        activityLabel.textContent = 'ATIVIDADE DO E-COMMERCE';
+
         // Info text
         const info = document.createElement('div');
         info.style.fontSize = '11px';
@@ -68,13 +80,14 @@ export class CheckoutApp {
         info.style.border = '1px solid #808080';
         info.innerHTML = `
       <strong>M1 — Vertical Slice Demo</strong><br>
-      Time is running. Each day = 20 seconds.<br>
-      Cash will change automatically.<br>
-      Watch the number animate!
+      Tempo rodando (20s = 1 dia).<br>
+      Atividade simulada continuamente.
     `;
 
         content.appendChild(header);
         content.appendChild(cashMetric);
+        content.appendChild(activityLabel);
+        content.appendChild(this.activityTicker.getElement());
         content.appendChild(info);
     }
 
@@ -87,6 +100,25 @@ export class CheckoutApp {
 
         // Listen for pause changes
         this.gameState.on('pause-changed', () => this.updatePauseButton());
+    }
+
+    private startActivitySimulation(): void {
+        // Simulate activity every 2-5 seconds
+        const simulate = () => {
+            if (!this.gameState.data.isPaused) {
+                this.activityTicker.simulateActivity();
+            }
+            const nextDelay = 2000 + Math.random() * 3000;
+            this.activityIntervalId = window.setTimeout(simulate, nextDelay);
+        };
+        simulate();
+    }
+
+    private stopActivitySimulation(): void {
+        if (this.activityIntervalId !== null) {
+            clearTimeout(this.activityIntervalId);
+            this.activityIntervalId = null;
+        }
     }
 
     private updateCash(): void {
@@ -119,5 +151,9 @@ export class CheckoutApp {
 
     show(): void {
         this.window.show();
+    }
+
+    destroy(): void {
+        this.stopActivitySimulation();
     }
 }
