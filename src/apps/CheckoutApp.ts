@@ -10,6 +10,7 @@ export class CheckoutApp {
     private gameState: GameState;
     private economyEngine: EconomyEngine;
     private stockBot: StockBot;
+    private marketingSystem: any;
     private activityTicker: ActivityTicker;
     private activityIntervalId: number | null = null;
 

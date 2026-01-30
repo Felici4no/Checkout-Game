@@ -1,5 +1,6 @@
 import { GameState } from './GameState';
 import { StockBot } from './StockBot';
+import { MarketingSystem } from './MarketingSystem';
 
 export type SupplierType = 'fast' | 'cheap';
 
@@ -47,6 +48,7 @@ export class EconomyEngine {
     private supplier: SupplierType = 'fast';
     private reputationScore = 1.0; // 1.0 = Good, 0.5 = Average, 0.0 = Poor
     private stockBot: StockBot | null = null;
+    private marketingSystem: MarketingSystem | null = null;
 
     // Daily financial summary for player feedback
     public lastDailySummary: {
@@ -73,6 +75,10 @@ export class EconomyEngine {
         this.stockBot = stockBot;
     }
 
+    setMarketingSystem(marketingSystem: MarketingSystem): void {
+        this.marketingSystem = marketingSystem;
+    }
+
     processDailyEconomy(): void {
         const state = this.gameState.data;
 
@@ -81,9 +87,15 @@ export class EconomyEngine {
 
         // 1. Generate visits (controlled RNG - less dispersion)
         const range = this.config.baseVisitsMax - this.config.baseVisitsMin;
-        const visits = Math.floor(
+        let visits = Math.floor(
             this.config.baseVisitsMin + (Math.random() * 0.6 + 0.2) * range // 20-80% of range
         );
+
+        // Apply marketing multiplier (campaign + viral)
+        if (this.marketingSystem) {
+            const multiplier = this.marketingSystem.getVisitMultiplier();
+            visits = Math.floor(visits * multiplier);
+        }
 
         // 2. Calculate conversion rate
         let conversionRate = this.config.baseConversionRate;
@@ -146,7 +158,19 @@ export class EconomyEngine {
         // 11. Emit summary event
         this.gameState.emit('daily-summary');
 
-        // 12. Run StockBot automation (if installed)
+        // 12. Process marketing system (campaign countdown, viral check)
+        if (this.marketingSystem) {
+            this.marketingSystem.processDailyEffects();
+
+            // Check for viral event
+            const viral = this.marketingSystem.checkForViral();
+            if (viral.occurred) {
+                this.gameState.emit('viral-occurred');
+                (this.gameState as any).lastViralMessage = viral.message;
+            }
+        }
+
+        // 13. Run StockBot automation (if installed)
         if (this.stockBot && this.stockBot.isInstalled()) {
             const result = this.stockBot.checkAndBuyStock();
             if (result.reason) {
