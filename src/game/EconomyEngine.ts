@@ -119,6 +119,8 @@ export class EconomyEngine {
             processedOrders: 0,
             overflowCreated: 0,
             lostToCapacity: 0,
+            employeeSalary: 0,
+            employeeWorked: false,
         };
 
         // 1. Generate visits (controlled RNG - less dispersion)
@@ -153,7 +155,23 @@ export class EconomyEngine {
         const stockLimitedOrders = Math.min(potentialOrders, state.stock);
         const lostToStock = potentialOrders - stockLimitedOrders;
 
-        // 5. Apply capacity limit
+        // 4.5. Process employee (check if they work today based on available cash)
+        let employeeSalary = 0;
+        let employeeWorked = false;
+        if (this.capacitySystem) {
+            const employeeResult = this.capacitySystem.processEmployeeDay(state.cash);
+            employeeSalary = employeeResult.salaryCost;
+            employeeWorked = employeeResult.worked;
+
+            // Deduct salary if employee worked
+            if (employeeSalary > 0) {
+                this.gameState.updateCash(-employeeSalary);
+            }
+        }
+        this.lastDailySummary.employeeSalary = employeeSalary;
+        this.lastDailySummary.employeeWorked = employeeWorked;
+
+        // 5. Apply capacity limit (after employee status is determined)
         let actualOrders = stockLimitedOrders;
         let lostToCapacity = 0;
         let overflowCreated = 0;
@@ -215,8 +233,8 @@ export class EconomyEngine {
         }
         this.lastDailySummary.interest = interest;
 
-        // Calculate net
-        this.lastDailySummary.net = revenue - this.config.dailyFixedCost - interest;
+        // Calculate net (including employee salary)
+        this.lastDailySummary.net = revenue - this.config.dailyFixedCost - interest - this.lastDailySummary.employeeSalary;
 
         // 11. Update metrics
         this.gameState.setDailyMetrics(visits, actualOrders, conversionRate * 100);

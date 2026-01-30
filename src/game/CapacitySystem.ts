@@ -13,6 +13,12 @@ export class CapacitySystem {
     private overflowYesterday = 0; // Overflow from previous day
     private overflowToday = 0; // Overflow created today
 
+    // Employee system
+    private employeeHired = false;
+    private employeeWorkedToday = false;
+    private readonly EMPLOYEE_SALARY = 30;
+    private readonly EMPLOYEE_CAPACITY_BONUS = 15;
+
     private readonly EXPANSION_COSTS = [500, 900]; // Progressive costs
     private readonly CAPACITY_PER_EXPANSION = 20;
     private readonly MAX_EXPANSIONS = 2;
@@ -22,7 +28,14 @@ export class CapacitySystem {
     }
 
     getCapacity(): number {
-        return this.baseCapacity + (this.expansions * this.CAPACITY_PER_EXPANSION);
+        let capacity = this.baseCapacity + (this.expansions * this.CAPACITY_PER_EXPANSION);
+
+        // Add employee bonus if employee worked today
+        if (this.employeeHired && this.employeeWorkedToday) {
+            capacity += this.EMPLOYEE_CAPACITY_BONUS;
+        }
+
+        return capacity;
     }
 
     getExpansions(): number {
@@ -58,6 +71,62 @@ export class CapacitySystem {
             success: true,
             message: `🏭 Warehouse Expansion ${this.expansions}/2 comprado! Capacidade: ${newCapacity} pedidos/dia`
         };
+    }
+
+    // Employee management
+    isEmployeeHired(): boolean {
+        return this.employeeHired;
+    }
+
+    didEmployeeWork(): boolean {
+        return this.employeeWorkedToday;
+    }
+
+    getEmployeeSalary(): number {
+        return this.EMPLOYEE_SALARY;
+    }
+
+    hireEmployee(): { success: boolean; message: string } {
+        if (this.employeeHired) {
+            return { success: false, message: 'Operador já contratado' };
+        }
+
+        this.employeeHired = true;
+        return {
+            success: true,
+            message: `👷 Operador contratado! +${this.EMPLOYEE_CAPACITY_BONUS} capacidade/dia. Salário: $${this.EMPLOYEE_SALARY}/dia`
+        };
+    }
+
+    fireEmployee(): { success: boolean; message: string } {
+        if (!this.employeeHired) {
+            return { success: false, message: 'Nenhum operador contratado' };
+        }
+
+        this.employeeHired = false;
+        this.employeeWorkedToday = false;
+        return {
+            success: true,
+            message: '👷 Operador demitido. Capacidade reduzida.'
+        };
+    }
+
+    // Called by EconomyEngine to check if employee can work today
+    processEmployeeDay(availableCash: number): { worked: boolean; salaryCost: number } {
+        if (!this.employeeHired) {
+            this.employeeWorkedToday = false;
+            return { worked: false, salaryCost: 0 };
+        }
+
+        // Check if can afford salary
+        if (availableCash >= this.EMPLOYEE_SALARY) {
+            this.employeeWorkedToday = true;
+            return { worked: true, salaryCost: this.EMPLOYEE_SALARY };
+        } else {
+            // Employee doesn't work today (no cash)
+            this.employeeWorkedToday = false;
+            return { worked: false, salaryCost: 0 };
+        }
     }
 
     processOrders(potentialOrders: number): ProcessResult {
