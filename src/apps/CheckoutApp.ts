@@ -22,6 +22,8 @@ export class CheckoutApp {
     private pauseButton: HTMLButtonElement | null = null;
     private priceDisplay: HTMLElement | null = null;
     private supplierDisplay: HTMLElement | null = null;
+    private dailySummaryElement: HTMLElement | null = null;
+    private bankruptcyWarningElement: HTMLElement | null = null;
 
     // Previous values for animations
     private previousCash = 500;
@@ -37,7 +39,7 @@ export class CheckoutApp {
         this.window = new Window({
             title: `${gameState.data.storeName} — Checkout`,
             width: 600,
-            height: 550,
+            height: 600,
             x: 80,
             y: 60,
         });
@@ -66,6 +68,18 @@ export class CheckoutApp {
 
         header.appendChild(this.dayElement);
         header.appendChild(controls);
+
+        // Bankruptcy warning (hidden by default)
+        this.bankruptcyWarningElement = document.createElement('div');
+        this.bankruptcyWarningElement.style.display = 'none';
+        this.bankruptcyWarningElement.style.padding = '8px';
+        this.bankruptcyWarningElement.style.marginBottom = '8px';
+        this.bankruptcyWarningElement.style.background = '#FF0';
+        this.bankruptcyWarningElement.style.border = '2px solid #C00';
+        this.bankruptcyWarningElement.style.fontSize = '11px';
+        this.bankruptcyWarningElement.style.fontWeight = 'bold';
+        this.bankruptcyWarningElement.style.color = '#C00';
+        this.bankruptcyWarningElement.style.textAlign = 'center';
 
         // Metrics grid (2 columns)
         const metricsGrid = document.createElement('div');
@@ -104,6 +118,20 @@ export class CheckoutApp {
         this.reputationElement = reputationMetric.querySelector('.metric-value')!;
         this.reputationElement.style.fontSize = '16px';
         metricsGrid.appendChild(reputationMetric);
+
+        // Daily summary panel
+        this.dailySummaryElement = document.createElement('div');
+        this.dailySummaryElement.style.fontSize = '10px';
+        this.dailySummaryElement.style.padding = '8px';
+        this.dailySummaryElement.style.marginBottom = '8px';
+        this.dailySummaryElement.style.background = '#E0E0E0';
+        this.dailySummaryElement.style.border = '1px solid #808080';
+        this.dailySummaryElement.style.fontFamily = "'Courier New', monospace";
+        this.dailySummaryElement.innerHTML = `
+      <strong>EXTRATO DIÁRIO:</strong><br>
+      Receita: $0.00 | Custos: $0.00 | Juros: $0.00<br>
+      <strong>Líquido: $0.00</strong>
+    `;
 
         // Actions panel
         const actionsPanel = document.createElement('div');
@@ -204,7 +232,9 @@ export class CheckoutApp {
         activityLabel.textContent = 'ATIVIDADE';
 
         content.appendChild(header);
+        content.appendChild(this.bankruptcyWarningElement);
         content.appendChild(metricsGrid);
+        content.appendChild(this.dailySummaryElement);
         content.appendChild(actionsPanel);
         content.appendChild(activityLabel);
         content.appendChild(this.activityTicker.getElement());
@@ -240,6 +270,7 @@ export class CheckoutApp {
         this.gameState.on('reputation-changed', () => this.updateReputation());
         this.gameState.on('pause-changed', () => this.updatePauseButton());
         this.gameState.on('price-changed', () => this.updatePriceDisplay());
+        this.gameState.on('daily-summary', () => this.updateDailySummary());
     }
 
     private startActivitySimulation(): void {
@@ -287,6 +318,40 @@ export class CheckoutApp {
         const newCash = this.gameState.data.cash;
         animateNumber(this.cashElement, this.previousCash, newCash, 500, formatCurrency);
         this.previousCash = newCash;
+
+        // Update bankruptcy warning
+        this.updateBankruptcyWarning();
+    }
+
+    private updateBankruptcyWarning(): void {
+        if (!this.bankruptcyWarningElement) return;
+
+        const consecutiveNegativeDays = this.gameState.data.consecutiveNegativeDays;
+
+        if (consecutiveNegativeDays === 1) {
+            this.bankruptcyWarningElement.style.display = 'block';
+            this.bankruptcyWarningElement.textContent = '⚠️ ATENÇÃO: Caixa negativo! (1/3 dias para falência)';
+        } else if (consecutiveNegativeDays === 2) {
+            this.bankruptcyWarningElement.style.display = 'block';
+            this.bankruptcyWarningElement.textContent = '🚨 CRÍTICO: Caixa negativo! (2/3 dias para falência)';
+        } else {
+            this.bankruptcyWarningElement.style.display = 'none';
+        }
+    }
+
+    private updateDailySummary(): void {
+        if (!this.dailySummaryElement) return;
+
+        const summary = this.economyEngine.lastDailySummary;
+        const netColor = summary.net >= 0 ? '#0A0' : '#C00';
+
+        this.dailySummaryElement.innerHTML = `
+      <strong>EXTRATO DIÁRIO:</strong><br>
+      Receita: ${formatCurrency(summary.revenue)} | 
+      Custos: ${formatCurrency(summary.costs)} | 
+      Juros: ${formatCurrency(summary.interest)}<br>
+      <strong style="color: ${netColor}">Líquido: ${formatCurrency(summary.net)}</strong>
+    `;
     }
 
     private updateStock(): void {

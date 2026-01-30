@@ -24,19 +24,19 @@ export interface EconomyConfig {
 }
 
 export const DEFAULT_ECONOMY_CONFIG: EconomyConfig = {
-    baseVisitsMin: 50,
-    baseVisitsMax: 100,
-    baseConversionRate: 0.03, // 3%
+    baseVisitsMin: 120,
+    baseVisitsMax: 220,
+    baseConversionRate: 0.06, // 6% - permite break-even com decisões razoáveis
 
     stockPurchaseCost: 100,
     stockPurchaseAmount: 50,
-    dailyFixedCost: 50,
+    dailyFixedCost: 30, // Reduzido de 50 para 30
 
-    priceElasticity: 0.003, // ±$1 price = ±0.3% conversion
+    priceElasticity: 0.0015, // Reduzido de 0.003 para 0.0015 (±$1 = ±0.15%)
 
     fastSupplierDelay: 0,
     cheapSupplierDelay: 1,
-    fastSupplierReputationBonus: 0.01,
+    fastSupplierReputationBonus: 0.02, // Aumentado de 0.01 para 0.02
     cheapSupplierReputationPenalty: -0.01,
 };
 
@@ -45,6 +45,14 @@ export class EconomyEngine {
     private config: EconomyConfig;
     private supplier: SupplierType = 'fast';
     private reputationScore = 1.0; // 1.0 = Good, 0.5 = Average, 0.0 = Poor
+
+    // Daily financial summary for player feedback
+    public lastDailySummary: {
+        revenue: number;
+        costs: number;
+        interest: number;
+        net: number;
+    } = { revenue: 0, costs: 0, interest: 0, net: 0 };
 
     constructor(gameState: GameState, config: EconomyConfig = DEFAULT_ECONOMY_CONFIG) {
         this.gameState = gameState;
@@ -62,10 +70,13 @@ export class EconomyEngine {
     processDailyEconomy(): void {
         const state = this.gameState.data;
 
-        // 1. Generate visits
+        // Reset daily summary
+        this.lastDailySummary = { revenue: 0, costs: 0, interest: 0, net: 0 };
+
+        // 1. Generate visits (controlled RNG - less dispersion)
+        const range = this.config.baseVisitsMax - this.config.baseVisitsMin;
         const visits = Math.floor(
-            Math.random() * (this.config.baseVisitsMax - this.config.baseVisitsMin) +
-            this.config.baseVisitsMin
+            this.config.baseVisitsMin + (Math.random() * 0.6 + 0.2) * range // 20-80% of range
         );
 
         // 2. Calculate conversion rate
@@ -89,23 +100,45 @@ export class EconomyEngine {
         const revenue = actualOrders * state.price;
         this.gameState.updateCash(revenue);
         this.gameState.updateStock(-actualOrders);
-        this.gameState.data.totalRevenue += revenue;
+        this.gameState.state.totalRevenue += revenue;
+        this.lastDailySummary.revenue = revenue;
 
         // 5. Apply daily costs
         this.gameState.updateCash(-this.config.dailyFixedCost);
+        this.lastDailySummary.costs = this.config.dailyFixedCost;
 
-        // 6. Apply interest on debt
+        // 6. Apply interest on debt (1% daily - reduced from 5%)
+        let interest = 0;
         if (state.debt > 0) {
-            const interest = state.debt * 0.05; // 5% daily
-            this.gameState.data.debt += interest;
+            interest = state.debt * 0.01; // 1% daily
+            this.gameState.state.debt += interest;
             this.gameState.updateCash(-interest);
         }
+        this.lastDailySummary.interest = interest;
+
+        // Calculate net
+        this.lastDailySummary.net = revenue - this.config.dailyFixedCost - interest;
 
         // 7. Update metrics
         this.gameState.setDailyMetrics(visits, actualOrders, conversionRate * 100);
 
-        // 8. Update reputation display
+        // 8. Natural reputation recovery (+0.005/day if > 0.5)
+        if (this.reputationScore > 0.5 && this.reputationScore < 1.0) {
+            this.reputationScore = Math.min(1.0, this.reputationScore + 0.005);
+        }
+
+        // 9. Supplier reputation impact
+        if (this.supplier === 'fast') {
+            this.adjustReputation(this.config.fastSupplierReputationBonus);
+        } else {
+            this.adjustReputation(this.config.cheapSupplierReputationPenalty);
+        }
+
+        // 10. Update reputation display
         this.updateReputationDisplay();
+
+        // 11. Emit summary event
+        this.gameState.emit('daily-summary');
     }
 
     adjustReputation(delta: number): void {
@@ -122,7 +155,7 @@ export class EconomyEngine {
         } else {
             reputation = 'Poor';
         }
-        this.gameState.data.reputation = reputation;
+        this.gameState.state.reputation = reputation;
         this.gameState.emit('reputation-changed');
     }
 

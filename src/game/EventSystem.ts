@@ -14,7 +14,7 @@ export const GAME_EVENTS: GameEvent[] = [
         title: 'Atraso do Fornecedor',
         message: 'Seu fornecedor atrasou a entrega. Reputação afetada.',
         effect: (gameState, economyEngine) => {
-            economyEngine.adjustReputation(-0.1);
+            economyEngine.adjustReputation(-0.05); // Reduzido de -0.1
         },
     },
     {
@@ -24,7 +24,7 @@ export const GAME_EVENTS: GameEvent[] = [
         effect: (gameState, economyEngine) => {
             const loss = Math.floor(gameState.data.stock * 0.2);
             gameState.updateStock(-loss);
-            economyEngine.adjustReputation(-0.15);
+            economyEngine.adjustReputation(-0.08); // Reduzido de -0.15
         },
     },
     {
@@ -45,9 +45,9 @@ export const GAME_EVENTS: GameEvent[] = [
     {
         id: 'public_complaint',
         title: 'Reclamação Pública',
-        message: 'Cliente insatisfeito fez reclamação pública. Reputação severamente afetada.',
+        message: 'Cliente insatisfeito fez reclamação pública. Reputação afetada.',
         effect: (gameState, economyEngine) => {
-            economyEngine.adjustReputation(-0.2);
+            economyEngine.adjustReputation(-0.1); // Reduzido de -0.2
         },
     },
     {
