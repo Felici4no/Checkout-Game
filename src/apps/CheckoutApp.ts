@@ -429,6 +429,17 @@ export class CheckoutApp {
       <strong style="color: ${netColor}">L: ${formatCurrency(summary.net)}</strong>
     `;
 
+        // Add employee salary info if applicable
+        if (summary.employeeSalary > 0) {
+            summaryText += `<br><span style="font-size: 8px;">👷 Salário: ${formatCurrency(summary.employeeSalary)}`;
+            if (summary.employeeWorked) {
+                summaryText += ` <span style="color: #0A0;">(✓ Trabalhou)</span>`;
+            }
+            summaryText += `</span>`;
+        } else if ((this.gameState as any).capacitySystem?.isEmployeeHired() && !summary.employeeWorked) {
+            summaryText += `<br><span style="font-size: 8px; color: #F90;">👷 Operador faltou (sem caixa para salário)</span>`;
+        }
+
         // Add capacity breakdown
         if (summary.processedOrders > 0 || summary.overflowCreated > 0 || summary.lostToCapacity > 0) {
             summaryText += `<br><span style="font-size: 8px;">`;

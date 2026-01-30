@@ -114,6 +114,51 @@ export class CapacityApp {
         queueSection.appendChild(this.queueDisplayElement);
         queueSection.appendChild(this.lostDisplayElement);
 
+        // Employee section
+        const employeeSection = document.createElement('div');
+        employeeSection.className = 'retro-panel';
+        employeeSection.style.marginBottom = '12px';
+
+        const employeeTitle = document.createElement('div');
+        employeeTitle.style.cssText = `
+      font-size: 10px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    `;
+        employeeTitle.textContent = '👷 OPERADOR';
+
+        const employeeDesc = document.createElement('div');
+        employeeDesc.style.cssText = `
+      font-size: 9px;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      color: #404040;
+    `;
+        employeeDesc.textContent = 'Contrate um operador para aumentar capacidade (+15/dia). Salário: $30/dia.';
+
+        const employeeStatusElement = document.createElement('div');
+        employeeStatusElement.id = 'employee-status';
+        employeeStatusElement.style.cssText = `
+      font-size: 9px;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      background: #E0E0E0;
+      border: 1px solid #808080;
+    `;
+        employeeStatusElement.innerHTML = 'Status: <strong>Não contratado</strong>';
+
+        const employeeButton = createButton(
+            'Contratar Operador',
+            () => this.toggleEmployee()
+        );
+        employeeButton.id = 'employee-button';
+        employeeButton.style.width = '100%';
+
+        employeeSection.appendChild(employeeTitle);
+        employeeSection.appendChild(employeeDesc);
+        employeeSection.appendChild(employeeStatusElement);
+        employeeSection.appendChild(employeeButton);
+
         // Warehouse expansion section
         const expansionSection = document.createElement('div');
         expansionSection.className = 'retro-panel';
@@ -174,6 +219,7 @@ export class CapacityApp {
         content.appendChild(title);
         content.appendChild(capacitySection);
         content.appendChild(queueSection);
+        content.appendChild(employeeSection);
         content.appendChild(expansionSection);
 
         this.updateDisplay();
@@ -182,6 +228,25 @@ export class CapacityApp {
     private attachListeners(): void {
         this.gameState.on('day-changed', () => this.updateDisplay());
         this.gameState.on('daily-summary', () => this.updateDisplay());
+    }
+
+    private toggleEmployee(): void {
+        const isHired = this.capacitySystem.isEmployeeHired();
+
+        let result;
+        if (isHired) {
+            result = this.capacitySystem.fireEmployee();
+        } else {
+            result = this.capacitySystem.hireEmployee();
+        }
+
+        if (result.success) {
+            this.updateDisplay();
+            this.gameState.emit('capacity-action');
+            (this.gameState as any).lastCapacityMessage = result.message;
+        } else {
+            alert(result.message);
+        }
     }
 
     private purchaseExpansion(): void {
@@ -252,6 +317,28 @@ export class CapacityApp {
                 this.expansion2Button.textContent = '✓ Nível 2';
                 this.expansion2Button.disabled = true;
                 this.expansion2Button.style.opacity = '0.5';
+            }
+        }
+
+        // Update employee status
+        const employeeStatusElement = document.getElementById('employee-status');
+        const employeeButton = document.getElementById('employee-button') as HTMLButtonElement;
+
+        if (employeeStatusElement && employeeButton) {
+            const isHired = this.capacitySystem.isEmployeeHired();
+            const didWork = this.capacitySystem.didEmployeeWork();
+
+            if (isHired) {
+                employeeButton.textContent = 'Demitir Operador';
+
+                if (didWork) {
+                    employeeStatusElement.innerHTML = 'Status: <strong style="color: #0A0;">✓ Ativo</strong> (+15 capacidade)';
+                } else {
+                    employeeStatusElement.innerHTML = 'Status: <strong style="color: #F90;">⚠ Faltou (sem caixa)</strong>';
+                }
+            } else {
+                employeeButton.textContent = 'Contratar Operador';
+                employeeStatusElement.innerHTML = 'Status: <strong>Não contratado</strong>';
             }
         }
     }

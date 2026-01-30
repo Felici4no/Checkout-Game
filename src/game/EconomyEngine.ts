@@ -52,6 +52,7 @@ export class EconomyEngine {
     private marketingSystem: MarketingSystem | null = null;
     private capacitySystem: CapacitySystem | null = null;
 
+
     // Daily financial summary for player feedback
     public lastDailySummary: {
         revenue: number;
@@ -63,6 +64,8 @@ export class EconomyEngine {
         processedOrders: number; // Actually processed
         overflowCreated: number; // Overflow created today
         lostToCapacity: number; // Lost due to capacity limit
+        employeeSalary: number; // Employee salary paid
+        employeeWorked: boolean; // Did employee work today
     } = {
             revenue: 0,
             costs: 0,
@@ -73,7 +76,10 @@ export class EconomyEngine {
             processedOrders: 0,
             overflowCreated: 0,
             lostToCapacity: 0,
+            employeeSalary: 0,
+            employeeWorked: false,
         };
+
 
     constructor(gameState: GameState, config: EconomyConfig = DEFAULT_ECONOMY_CONFIG) {
         this.gameState = gameState;
