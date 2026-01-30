@@ -42,10 +42,10 @@ export class CheckoutApp {
         this.activityTicker = new ActivityTicker();
         this.window = new Window({
             title: `${gameState.data.storeName} — Checkout`,
-            width: 600,
-            height: 650,
+            width: 580,
+            height: 560,
             x: 80,
-            y: 60,
+            y: 40,
         });
 
         this.buildUI();
@@ -89,8 +89,8 @@ export class CheckoutApp {
         const metricsGrid = document.createElement('div');
         metricsGrid.style.display = 'grid';
         metricsGrid.style.gridTemplateColumns = '1fr 1fr';
-        metricsGrid.style.gap = '8px';
-        metricsGrid.style.marginBottom = '12px';
+        metricsGrid.style.gap = '6px';
+        metricsGrid.style.marginBottom = '6px';
 
         // Cash
         const cashMetric = this.createMetric('💰 CAIXA', formatCurrency(this.gameState.data.cash));
@@ -125,26 +125,25 @@ export class CheckoutApp {
 
         // Daily summary panel
         this.dailySummaryElement = document.createElement('div');
-        this.dailySummaryElement.style.fontSize = '10px';
-        this.dailySummaryElement.style.padding = '8px';
-        this.dailySummaryElement.style.marginBottom = '8px';
+        this.dailySummaryElement.style.fontSize = '9px';
+        this.dailySummaryElement.style.padding = '4px 6px';
+        this.dailySummaryElement.style.marginBottom = '6px';
         this.dailySummaryElement.style.background = '#E0E0E0';
         this.dailySummaryElement.style.border = '1px solid #808080';
         this.dailySummaryElement.style.fontFamily = "'Courier New', monospace";
         this.dailySummaryElement.innerHTML = `
-      <strong>EXTRATO DIÁRIO:</strong><br>
-      Receita: $0.00 | Custos: $0.00 | Juros: $0.00<br>
-      <strong>Líquido: $0.00</strong>
+      <strong>EXTRATO:</strong> R: $0 | C: $0 | J: $0 | <strong>L: $0</strong>
     `;
 
         // Actions panel
         const actionsPanel = document.createElement('div');
         actionsPanel.className = 'retro-panel';
-        actionsPanel.style.marginBottom = '12px';
+        actionsPanel.style.marginBottom = '6px';
 
         const actionsTitle = document.createElement('div');
         actionsTitle.style.fontWeight = 'bold';
-        actionsTitle.style.marginBottom = '8px';
+        actionsTitle.style.marginBottom = '4px';
+        actionsTitle.style.fontSize = '10px';
         actionsTitle.textContent = 'AÇÕES';
 
         // Buy stock action
@@ -152,7 +151,8 @@ export class CheckoutApp {
         buyStockRow.style.display = 'flex';
         buyStockRow.style.justifyContent = 'space-between';
         buyStockRow.style.alignItems = 'center';
-        buyStockRow.style.marginBottom = '8px';
+        buyStockRow.style.marginBottom = '4px';
+        buyStockRow.style.fontSize = '11px';
 
         const buyStockLabel = document.createElement('span');
         buyStockLabel.textContent = 'Comprar Estoque (50 un):';
@@ -166,7 +166,8 @@ export class CheckoutApp {
         priceRow.style.display = 'flex';
         priceRow.style.justifyContent = 'space-between';
         priceRow.style.alignItems = 'center';
-        priceRow.style.marginBottom = '8px';
+        priceRow.style.marginBottom = '4px';
+        priceRow.style.fontSize = '11px';
 
         const priceLabel = document.createElement('span');
         priceLabel.textContent = 'Preço:';
@@ -200,7 +201,8 @@ export class CheckoutApp {
         supplierRow.style.display = 'flex';
         supplierRow.style.justifyContent = 'space-between';
         supplierRow.style.alignItems = 'center';
-        supplierRow.style.marginBottom = '8px';
+        supplierRow.style.marginBottom = '4px';
+        supplierRow.style.fontSize = '11px';
 
         const supplierLabel = document.createElement('span');
         supplierLabel.textContent = 'Fornecedor:';
@@ -216,9 +218,9 @@ export class CheckoutApp {
         supplierControls.appendChild(cheapBtn);
 
         this.supplierDisplay = document.createElement('div');
-        this.supplierDisplay.style.fontSize = '10px';
-        this.supplierDisplay.style.marginTop = '4px';
-        this.supplierDisplay.textContent = 'Atual: Rápido (sem atraso, +reputação)';
+        this.supplierDisplay.style.fontSize = '8px';
+        this.supplierDisplay.style.marginTop = '2px';
+        this.supplierDisplay.textContent = 'Atual: Rápido';
 
         supplierRow.appendChild(supplierLabel);
         supplierRow.appendChild(supplierControls);
@@ -228,12 +230,13 @@ export class CheckoutApp {
         stockBotRow.style.display = 'flex';
         stockBotRow.style.justifyContent = 'space-between';
         stockBotRow.style.alignItems = 'center';
-        stockBotRow.style.marginTop = '12px';
-        stockBotRow.style.paddingTop = '8px';
+        stockBotRow.style.marginTop = '6px';
+        stockBotRow.style.paddingTop = '4px';
         stockBotRow.style.borderTop = '1px solid #808080';
+        stockBotRow.style.fontSize = '11px';
 
         const stockBotLabel = document.createElement('span');
-        stockBotLabel.innerHTML = '🤖 <strong>StockBot v1.0</strong><br><span style="font-size: 9px;">Auto-compra quando < 20</span>';
+        stockBotLabel.innerHTML = '🤖 <strong>StockBot</strong><br><span style="font-size: 8px;">Auto < 20</span>';
 
         this.stockBotButton = createButton('Comprar $250', () => this.buyStockBot());
         stockBotRow.appendChild(stockBotLabel);
@@ -268,17 +271,17 @@ export class CheckoutApp {
     private createMetric(label: string, value: string): HTMLElement {
         const metric = document.createElement('div');
         metric.className = 'metric-display';
-        metric.style.padding = '8px';
+        metric.style.padding = '4px';
         metric.style.marginBottom = '0';
 
         const labelEl = document.createElement('div');
         labelEl.className = 'metric-label';
-        labelEl.style.fontSize = '9px';
+        labelEl.style.fontSize = '8px';
         labelEl.textContent = label;
 
         const valueEl = document.createElement('div');
         valueEl.className = 'metric-value';
-        valueEl.style.fontSize = '18px';
+        valueEl.style.fontSize = '15px';
         valueEl.textContent = value;
 
         metric.appendChild(labelEl);
@@ -363,13 +366,11 @@ export class CheckoutApp {
 
     private setSupplier(supplier: SupplierType): void {
         this.economyEngine.setSupplier(supplier);
-        const info = supplier === 'fast'
-            ? 'Rápido (sem atraso, +reputação)'
-            : 'Barato (1 dia atraso, -reputação)';
+        const info = supplier === 'fast' ? 'Rápido' : 'Barato';
         if (this.supplierDisplay) {
             this.supplierDisplay.textContent = `Atual: ${info}`;
         }
-        this.activityTicker.addMessage(`Fornecedor alterado: ${supplier === 'fast' ? 'Rápido' : 'Barato'}`, 'info');
+        this.activityTicker.addMessage(`Fornecedor alterado: ${info}`, 'info');
     }
 
     private updateCash(): void {
@@ -405,11 +406,11 @@ export class CheckoutApp {
         const netColor = summary.net >= 0 ? '#0A0' : '#C00';
 
         this.dailySummaryElement.innerHTML = `
-      <strong>EXTRATO DIÁRIO:</strong><br>
-      Receita: ${formatCurrency(summary.revenue)} | 
-      Custos: ${formatCurrency(summary.costs)} | 
-      Juros: ${formatCurrency(summary.interest)}<br>
-      <strong style="color: ${netColor}">Líquido: ${formatCurrency(summary.net)}</strong>
+      <strong>EXTRATO:</strong> 
+      R: ${formatCurrency(summary.revenue)} | 
+      C: ${formatCurrency(summary.costs)} | 
+      J: ${formatCurrency(summary.interest)} | 
+      <strong style="color: ${netColor}">L: ${formatCurrency(summary.net)}</strong>
     `;
     }
 
