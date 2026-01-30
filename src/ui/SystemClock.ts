@@ -1,6 +1,7 @@
 export class SystemClock {
     private element: HTMLElement;
     private intervalId: number | null = null;
+    private isFlashing = false;
 
     constructor(container: HTMLElement) {
         this.element = document.createElement('div');
@@ -19,6 +20,21 @@ export class SystemClock {
             clearInterval(this.intervalId);
             this.intervalId = null;
         }
+    }
+
+    flash(): void {
+        // Flash effect on day end
+        if (this.isFlashing) return;
+
+        this.isFlashing = true;
+        this.element.style.color = '#F00';
+        this.element.style.fontWeight = 'bold';
+
+        setTimeout(() => {
+            this.element.style.color = '';
+            this.element.style.fontWeight = '';
+            this.isFlashing = false;
+        }, 500);
     }
 
     private updateTime(): void {

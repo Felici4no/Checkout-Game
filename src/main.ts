@@ -4,6 +4,9 @@ import { TimeSystem } from './game/TimeSystem';
 import { EconomyEngine } from './game/EconomyEngine';
 import { EventSystem } from './game/EventSystem';
 import { Desktop } from './ui/Desktop';
+import { SystemClock } from './ui/SystemClock';
+import { DayProgressBar } from './ui/DayProgressBar';
+import { DayTransitionOverlay } from './ui/DayTransitionOverlay';
 import { GameOverModal } from './ui/GameOverModal';
 import { EventPopup } from './ui/EventPopup';
 import { CheckoutApp } from './apps/CheckoutApp';
@@ -18,6 +21,9 @@ class Game {
     private checkoutApp: CheckoutApp;
     private bankApp: BankApp;
     private desktopElement: HTMLElement | null = null;
+    private systemClock: SystemClock | null = null;
+    private dayProgressBar: DayProgressBar;
+    private dayTransitionOverlay: DayTransitionOverlay;
 
     constructor() {
         // Initialize core systems
@@ -32,6 +38,8 @@ class Game {
         this.desktop = new Desktop();
         this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine);
         this.bankApp = new BankApp(this.gameState);
+        this.dayProgressBar = new DayProgressBar();
+        this.dayTransitionOverlay = new DayTransitionOverlay();
 
         this.setupUI();
         this.start();
@@ -57,8 +65,20 @@ class Game {
         this.checkoutApp.getWindow().hide();
         this.bankApp.getWindow().hide();
 
+        // Add day progress bar to desktop
+        this.desktopElement.appendChild(this.dayProgressBar.getElement());
+
+        // Add day transition overlay to desktop
+        this.desktopElement.appendChild(this.dayTransitionOverlay.getElement());
+
         monitorFrame.appendChild(monitorScreen);
         app.appendChild(monitorFrame);
+
+        // Get system clock reference from desktop
+        const systemTray = this.desktopElement.querySelector('.system-tray');
+        if (systemTray) {
+            this.systemClock = (this.desktop as any).systemClock;
+        }
 
         // Add desktop icons
         this.desktop.addIcon('Checkout', '💼', () => {
@@ -85,6 +105,40 @@ class Game {
         this.gameState.on('event-occurred', () => {
             this.handleEvent();
         });
+
+        // Listen for time progress
+        this.gameState.on('time-progress', () => {
+            this.updateDayProgress();
+        });
+
+        // Listen for day ending
+        this.gameState.on('day-ending', () => {
+            this.handleDayEnding();
+        });
+
+        // Listen for day changed (after economy processing)
+        this.gameState.on('day-changed', () => {
+            this.handleDayChanged();
+        });
+    }
+
+    private updateDayProgress(): void {
+        const progress = this.timeSystem.getProgress();
+        this.dayProgressBar.updateProgress(progress);
+    }
+
+    private handleDayEnding(): void {
+        // Visual feedback: flash clock and progress bar
+        if (this.systemClock) {
+            this.systemClock.flash();
+        }
+        this.dayProgressBar.flash();
+    }
+
+    private handleDayChanged(): void {
+        // Show day transition overlay with summary
+        const summary = this.economyEngine.lastDailySummary;
+        this.dayTransitionOverlay.show(this.gameState.data.currentDay, summary);
     }
 
     private handleEvent(): void {

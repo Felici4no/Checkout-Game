@@ -30,6 +30,9 @@ export class TimeSystem {
 
             this.elapsedTime += 100;
 
+            // Emit progress update
+            this.gameState.emit('time-progress');
+
             if (this.elapsedTime >= this.DAY_DURATION_MS) {
                 this.elapsedTime = 0;
                 this.onDayEnd();
@@ -45,32 +48,38 @@ export class TimeSystem {
     }
 
     private onDayEnd(): void {
-        // Advance the day
-        this.gameState.advanceDay();
+        // Emit day-end event BEFORE processing (for visual ritual)
+        this.gameState.emit('day-ending');
 
-        // Process economy (M2: deterministic, no random changes)
-        if (this.economyEngine) {
-            this.economyEngine.processDailyEconomy();
-        }
+        // Small delay for visual ritual
+        setTimeout(() => {
+            // Advance the day
+            this.gameState.advanceDay();
 
-        // Check for random events
-        if (this.eventSystem) {
-            const event = this.eventSystem.checkForEvent();
-            if (event) {
-                this.eventSystem.triggerEvent(event);
-                // Emit event with data for popup
-                this.gameState.emit('event-occurred');
-                (this.gameState as any).lastEvent = event; // Store for popup
+            // Process economy (M2: deterministic, no random changes)
+            if (this.economyEngine) {
+                this.economyEngine.processDailyEconomy();
             }
-        }
 
-        this.gameState.trackNegativeDay();
+            // Check for random events
+            if (this.eventSystem) {
+                const event = this.eventSystem.checkForEvent();
+                if (event) {
+                    this.eventSystem.triggerEvent(event);
+                    // Emit event with data for popup
+                    this.gameState.emit('event-occurred');
+                    (this.gameState as any).lastEvent = event; // Store for popup
+                }
+            }
 
-        // Check bankruptcy
-        if (this.gameState.isBankrupt()) {
-            this.stop();
-            this.gameState.emit('game-over');
-        }
+            this.gameState.trackNegativeDay();
+
+            // Check bankruptcy
+            if (this.gameState.isBankrupt()) {
+                this.stop();
+                this.gameState.emit('game-over');
+            }
+        }, 100);
     }
 
     getProgress(): number {
