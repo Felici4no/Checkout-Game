@@ -1,13 +1,25 @@
 import { GameState } from './GameState';
+import { EconomyEngine } from './EconomyEngine';
+import { EventSystem } from './EventSystem';
 
 export class TimeSystem {
     private gameState: GameState;
+    private economyEngine: EconomyEngine | null = null;
+    private eventSystem: EventSystem | null = null;
     private intervalId: number | null = null;
     private readonly DAY_DURATION_MS = 20000; // 20 seconds = 1 game day
     private elapsedTime = 0;
 
     constructor(gameState: GameState) {
         this.gameState = gameState;
+    }
+
+    setEconomyEngine(engine: EconomyEngine): void {
+        this.economyEngine = engine;
+    }
+
+    setEventSystem(system: EventSystem): void {
+        this.eventSystem = system;
     }
 
     start(): void {
@@ -33,12 +45,24 @@ export class TimeSystem {
     }
 
     private onDayEnd(): void {
-        // For M1, just advance the day and simulate cash change
+        // Advance the day
         this.gameState.advanceDay();
 
-        // Simple simulation: random cash change for demo
-        const change = Math.floor(Math.random() * 100) - 30;
-        this.gameState.updateCash(change);
+        // Process economy (M2: deterministic, no random changes)
+        if (this.economyEngine) {
+            this.economyEngine.processDailyEconomy();
+        }
+
+        // Check for random events
+        if (this.eventSystem) {
+            const event = this.eventSystem.checkForEvent();
+            if (event) {
+                this.eventSystem.triggerEvent(event);
+                // Emit event with data for popup
+                this.gameState.emit('event-occurred');
+                (this.gameState as any).lastEvent = event; // Store for popup
+            }
+        }
 
         this.gameState.trackNegativeDay();
 

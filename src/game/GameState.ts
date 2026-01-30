@@ -54,7 +54,7 @@ export interface GameStateData {
 }
 
 export class GameState extends EventEmitter {
-    private state: GameStateData;
+    public state: GameStateData; // Made public for EconomyEngine access
 
     constructor() {
         super();
@@ -99,6 +99,11 @@ export class GameState extends EventEmitter {
     setPrice(price: number): void {
         this.state.price = Math.max(1, price);
         this.emit('price-changed');
+    }
+
+    updateDebt(amount: number): void {
+        this.state.debt = Math.max(0, this.state.debt + amount);
+        this.emit('debt-changed');
     }
 
     setPaused(paused: boolean): void {
