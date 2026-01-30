@@ -56,7 +56,9 @@ export class EconomyEngine {
         costs: number;
         interest: number;
         net: number;
-    } = { revenue: 0, costs: 0, interest: 0, net: 0 };
+        lostOrders: number; // NEW: for causal feedback
+        reputationImpact: number; // NEW: reputation change from lost orders
+    } = { revenue: 0, costs: 0, interest: 0, net: 0, lostOrders: 0, reputationImpact: 0 };
 
     constructor(gameState: GameState, config: EconomyConfig = DEFAULT_ECONOMY_CONFIG) {
         this.gameState = gameState;
@@ -83,7 +85,14 @@ export class EconomyEngine {
         const state = this.gameState.data;
 
         // Reset daily summary
-        this.lastDailySummary = { revenue: 0, costs: 0, interest: 0, net: 0 };
+        this.lastDailySummary = {
+            revenue: 0,
+            costs: 0,
+            interest: 0,
+            net: 0,
+            lostOrders: 0,
+            reputationImpact: 0
+        };
 
         // 1. Generate visits (controlled RNG - less dispersion)
         const range = this.config.baseVisitsMax - this.config.baseVisitsMin;
@@ -91,7 +100,7 @@ export class EconomyEngine {
             this.config.baseVisitsMin + (Math.random() * 0.6 + 0.2) * range // 20-80% of range
         );
 
-        // Apply marketing multiplier (campaign + viral)
+        // Apply marketing multiplier (campaign + viral, capped at 6x)
         if (this.marketingSystem) {
             const multiplier = this.marketingSystem.getVisitMultiplier();
             visits = Math.floor(visits * multiplier);
@@ -113,19 +122,36 @@ export class EconomyEngine {
         // 3. Calculate orders (limited by stock)
         const potentialOrders = Math.floor(visits * conversionRate);
         const actualOrders = Math.min(potentialOrders, state.stock);
+        const lostOrders = potentialOrders - actualOrders;
 
-        // 4. Process sales
+        // Track lost orders
+        this.lastDailySummary.lostOrders = lostOrders;
+
+        // 4. Apply reputation penalty for lost orders (especially during marketing)
+        if (lostOrders > 0) {
+            const isMarketingActive = this.marketingSystem?.isMarketingActive() || false;
+            // Harsher penalty during marketing campaigns/viral
+            const basePenalty = -0.01;
+            const marketingMultiplier = isMarketingActive ? 2.0 : 1.0;
+            const lostOrdersFactor = Math.min(lostOrders / 10, 3.0); // Cap at 3x
+            const reputationPenalty = basePenalty * marketingMultiplier * lostOrdersFactor;
+
+            this.adjustReputation(reputationPenalty);
+            this.lastDailySummary.reputationImpact = reputationPenalty;
+        }
+
+        // 5. Process sales
         const revenue = actualOrders * state.price;
         this.gameState.updateCash(revenue);
         this.gameState.updateStock(-actualOrders);
         this.gameState.state.totalRevenue += revenue;
         this.lastDailySummary.revenue = revenue;
 
-        // 5. Apply daily costs
+        // 6. Apply daily costs
         this.gameState.updateCash(-this.config.dailyFixedCost);
         this.lastDailySummary.costs = this.config.dailyFixedCost;
 
-        // 6. Apply interest on debt (1% daily - reduced from 5%)
+        // 7. Apply interest on debt (1% daily - reduced from 5%)
         let interest = 0;
         if (state.debt > 0) {
             interest = state.debt * 0.01; // 1% daily
@@ -137,28 +163,28 @@ export class EconomyEngine {
         // Calculate net
         this.lastDailySummary.net = revenue - this.config.dailyFixedCost - interest;
 
-        // 7. Update metrics
+        // 8. Update metrics
         this.gameState.setDailyMetrics(visits, actualOrders, conversionRate * 100);
 
-        // 8. Natural reputation recovery (+0.005/day if > 0.5)
+        // 9. Natural reputation recovery (+0.005/day if > 0.5)
         if (this.reputationScore > 0.5 && this.reputationScore < 1.0) {
             this.reputationScore = Math.min(1.0, this.reputationScore + 0.005);
         }
 
-        // 9. Supplier reputation impact
+        // 10. Supplier reputation impact
         if (this.supplier === 'fast') {
             this.adjustReputation(this.config.fastSupplierReputationBonus);
         } else {
             this.adjustReputation(this.config.cheapSupplierReputationPenalty);
         }
 
-        // 10. Update reputation display
+        // 11. Update reputation display
         this.updateReputationDisplay();
 
-        // 11. Emit summary event
+        // 12. Emit summary event
         this.gameState.emit('daily-summary');
 
-        // 12. Process marketing system (campaign countdown, viral check)
+        // 13. Process marketing system (campaign countdown, viral check)
         if (this.marketingSystem) {
             this.marketingSystem.processDailyEffects();
 
@@ -170,7 +196,7 @@ export class EconomyEngine {
             }
         }
 
-        // 13. Run StockBot automation (if installed)
+        // 14. Run StockBot automation (if installed)
         if (this.stockBot && this.stockBot.isInstalled()) {
             const result = this.stockBot.checkAndBuyStock();
             if (result.reason) {

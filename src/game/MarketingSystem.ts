@@ -35,6 +35,7 @@ export class MarketingSystem {
     private readonly VIRAL_DURATION = 2; // 2 days
     private readonly VIRAL_MULTIPLIER_MIN = 3.0; // +200%
     private readonly VIRAL_MULTIPLIER_MAX = 4.0; // +300%
+    private readonly MAX_MULTIPLIER = 6.0; // Cap to prevent absurd stacking
 
     constructor(gameState: GameState) {
         this.gameState = gameState;
@@ -50,13 +51,19 @@ export class MarketingSystem {
             return { success: false, message: `Caixa insuficiente ($${this.CAMPAIGN_COST})` };
         }
 
-        // Warning check (but don't block)
+        // Contextualized warnings (before starting campaign)
         const warnings: string[] = [];
-        if (this.gameState.data.stock < 100) {
-            warnings.push('⚠️ Estoque baixo');
+        const expectedVisits = 170 * this.CAMPAIGN_MULTIPLIER; // ~425 visits
+        const expectedOrders = Math.floor(expectedVisits * 0.06); // ~25 orders
+
+        if (this.gameState.data.stock < expectedOrders * 2) {
+            warnings.push(`⚠️ CRÍTICO: Estoque baixo! Espera-se ~${expectedOrders} pedidos/dia`);
+        } else if (this.gameState.data.stock < expectedOrders * 4) {
+            warnings.push(`⚠️ Estoque pode não durar os 4 dias`);
         }
+
         if (this.gameState.data.cash < 400) {
-            warnings.push('⚠️ Caixa apertado');
+            warnings.push('⚠️ Caixa apertado para recomprar estoque');
         }
 
         this.gameState.updateCash(-this.CAMPAIGN_COST);
@@ -64,7 +71,7 @@ export class MarketingSystem {
         this.campaign.daysRemaining = this.CAMPAIGN_DURATION;
         this.campaign.visitMultiplier = this.CAMPAIGN_MULTIPLIER;
 
-        const warningText = warnings.length > 0 ? ` ${warnings.join(' ')}` : '';
+        const warningText = warnings.length > 0 ? `\n\n${warnings.join('\n')}` : '';
         return {
             success: true,
             message: `📢 Campanha iniciada! +150% visitas por ${this.CAMPAIGN_DURATION} dias${warningText}`
@@ -99,9 +106,18 @@ export class MarketingSystem {
         this.viral.lastViralDay = currentDay;
 
         const percentage = Math.round((this.viral.visitMultiplier - 1) * 100);
+
+        // Contextualized warning for viral
+        const currentStock = this.gameState.data.stock;
+        const expectedVisits = 170 * this.viral.visitMultiplier;
+        const expectedOrders = Math.floor(expectedVisits * 0.06);
+        const warning = currentStock < expectedOrders * 2
+            ? `\n⚠️ ATENÇÃO: Estoque atual (${currentStock}) pode não ser suficiente!`
+            : '';
+
         return {
             occurred: true,
-            message: `🔥 VIRAL! Post explodiu nas redes! +${percentage}% visitas por ${this.VIRAL_DURATION} dias!`
+            message: `🔥 VIRAL! Post explodiu nas redes! +${percentage}% visitas por ${this.VIRAL_DURATION} dias!${warning}`
         };
     }
 
@@ -128,7 +144,7 @@ export class MarketingSystem {
         }
     }
 
-    // Get total visit multiplier (campaign + viral stack)
+    // Get total visit multiplier (campaign + viral stack, with cap)
     getVisitMultiplier(): number {
         let multiplier = 1.0;
 
@@ -140,7 +156,8 @@ export class MarketingSystem {
             multiplier *= this.viral.visitMultiplier;
         }
 
-        return multiplier;
+        // Cap at 6x to prevent absurd stacking (e.g., 2.5x × 4x = 10x → capped to 6x)
+        return Math.min(multiplier, this.MAX_MULTIPLIER);
     }
 
     getCampaignStatus(): { isActive: boolean; daysRemaining: number } {
@@ -159,5 +176,9 @@ export class MarketingSystem {
 
     getCampaignCost(): number {
         return this.CAMPAIGN_COST;
+    }
+
+    isMarketingActive(): boolean {
+        return this.campaign.isActive || this.viral.isActive;
     }
 }

@@ -406,13 +406,22 @@ export class CheckoutApp {
         const summary = this.economyEngine.lastDailySummary;
         const netColor = summary.net >= 0 ? '#0A0' : '#C00';
 
-        this.dailySummaryElement.innerHTML = `
+        let summaryText = `
       <strong>EXTRATO:</strong> 
       R: ${formatCurrency(summary.revenue)} | 
       C: ${formatCurrency(summary.costs)} | 
       J: ${formatCurrency(summary.interest)} | 
       <strong style="color: ${netColor}">L: ${formatCurrency(summary.net)}</strong>
     `;
+
+        // Add lost orders warning if any
+        if (summary.lostOrders > 0) {
+            const repImpact = summary.reputationImpact;
+            const repText = repImpact < 0 ? `${(repImpact * 100).toFixed(1)}%` : '';
+            summaryText += `<br><span style="color: #C00; font-weight: bold;">⚠️ ${summary.lostOrders} pedidos perdidos (Rep: ${repText})</span>`;
+        }
+
+        this.dailySummaryElement.innerHTML = summaryText;
     }
 
     private updateStock(): void {
