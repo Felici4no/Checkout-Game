@@ -66,6 +66,7 @@ export class EconomyEngine {
         lostToCapacity: number; // Lost due to capacity limit
         employeeSalary: number; // Employee salary paid
         employeeWorked: boolean; // Did employee work today
+        stockArrivedToday: number; // Stock that arrived today
     } = {
             revenue: 0,
             costs: 0,
@@ -78,6 +79,7 @@ export class EconomyEngine {
             lostToCapacity: 0,
             employeeSalary: 0,
             employeeWorked: false,
+            stockArrivedToday: 0,
         };
 
 
@@ -127,7 +129,17 @@ export class EconomyEngine {
             lostToCapacity: 0,
             employeeSalary: 0,
             employeeWorked: false,
+            stockArrivedToday: 0,
         };
+
+        // FIRST: Process incoming stock arrivals (BEFORE calculating orders)
+        if (this.incomingStockSystem) {
+            const received = this.incomingStockSystem.processArrivals();
+            if (received > 0) {
+                this.gameState.updateStock(state.stock + received);
+                this.lastDailySummary.stockArrivedToday = received;
+            }
+        }
 
         // 1. Generate visits (controlled RNG - less dispersion)
         const range = this.config.baseVisitsMax - this.config.baseVisitsMin;

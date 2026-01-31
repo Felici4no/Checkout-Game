@@ -165,13 +165,13 @@ export class GameState extends EventEmitter {
         this.emit('trust-changed');
     }
 
-    orderStock(amount: number, supplier: 'fast' | 'cheap'): boolean {
+    orderStock(amount: number, supplier: 'fast' | 'cheap'): number {
         const STOCK_COST = 100; // Fixed cost per order
 
         // Validate: check if player has enough cash
         if (this.state.cash < STOCK_COST) {
             console.log('[GameState] Cannot order stock: insufficient funds');
-            return false;
+            return 0; // Failed
         }
 
         // Deduct cost immediately
@@ -181,9 +181,11 @@ export class GameState extends EventEmitter {
         const incomingStockSystem = (this as any).incomingStockSystem;
         if (incomingStockSystem) {
             incomingStockSystem.orderStock(amount, supplier);
+            // Return lead time for UI message
+            return supplier === 'fast' ? 1 : 2;
         }
 
-        return true;
+        return 0; // Failed (no system)
     }
 
     isBankrupt(): boolean {

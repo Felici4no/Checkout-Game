@@ -1,6 +1,5 @@
 import { GameState } from '../game/GameState';
 import { EconomyEngine, SupplierType } from '../game/EconomyEngine';
-import { StockBot } from '../game/StockBot';
 import { Window } from '../ui/Window';
 import { ActivityTicker } from '../ui/ActivityTicker';
 import { animateNumber, formatCurrency, formatPercentage, createButton } from '../utils/helpers';
@@ -9,7 +8,6 @@ export class CheckoutApp {
     private window: Window;
     private gameState: GameState;
     private economyEngine: EconomyEngine;
-    private stockBot: StockBot;
     private marketingSystem: any;
     private activityTicker: ActivityTicker;
     private activityIntervalId: number | null = null;
@@ -36,10 +34,9 @@ export class CheckoutApp {
     private previousOrders = 0;
     private previousConversion = 0;
 
-    constructor(gameState: GameState, economyEngine: EconomyEngine, stockBot: StockBot) {
+    constructor(gameState: GameState, economyEngine: EconomyEngine) {
         this.gameState = gameState;
         this.economyEngine = economyEngine;
-        this.stockBot = stockBot;
         this.activityTicker = new ActivityTicker();
         this.window = new Window({
             title: `${gameState.data.storeProfile.name} — Checkout`,
