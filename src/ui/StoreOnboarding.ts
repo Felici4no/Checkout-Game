@@ -1,5 +1,3 @@
-import './style.css';
-
 export class StoreOnboarding {
     private container: HTMLElement;
     private onComplete: (storeName: string, domain: string) => void;
@@ -142,6 +140,7 @@ export class StoreOnboarding {
 
         // Start game after delay
         setTimeout(() => {
+            console.log('[DEBUG] Calling onComplete callback...', { storeName: storeName.trim(), domain });
             this.onComplete(storeName.trim(), domain);
         }, 2000);
     }

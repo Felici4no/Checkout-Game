@@ -50,14 +50,18 @@ class Game {
     private showStoreOnboarding(): void {
         const app = document.querySelector<HTMLDivElement>('#app')!;
 
+        console.log('[DEBUG] Creating StoreOnboarding...');
         const onboarding = new StoreOnboarding((storeName: string, domain: string) => {
+            console.log('[DEBUG] Onboarding completed!', { storeName, domain });
             this.initializeGame(storeName, domain);
         });
 
         onboarding.show(app);
+        console.log('[DEBUG] Onboarding shown');
     }
 
     private initializeGame(storeName: string, domain: string): void {
+        console.log('[DEBUG] Initializing game...', { storeName, domain });
         // Initialize core systems
         this.gameState = new GameState();
 
