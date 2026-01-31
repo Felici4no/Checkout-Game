@@ -49,6 +49,12 @@ export interface GameStateData {
     // Trust system
     trustScore: number;
 
+    // Incoming stock (manual orders with lead time)
+    incomingStock: Array<{
+        amount: number;
+        arrivalDay: number;
+    }>;
+
     // Time
     currentDay: number;
     isPaused: boolean;
@@ -83,6 +89,7 @@ export class GameState extends EventEmitter {
             conversionRate: 0,
             reputation: 'Good',
             trustScore: 10, // Start low
+            incomingStock: [], // No pending stock initially
             currentDay: 1,
             isPaused: false,
             consecutiveNegativeDays: 0,
@@ -156,6 +163,27 @@ export class GameState extends EventEmitter {
     setTrustScore(score: number): void {
         this.state.trustScore = Math.max(0, Math.min(100, score));
         this.emit('trust-changed');
+    }
+
+    orderStock(amount: number, supplier: 'fast' | 'cheap'): boolean {
+        const STOCK_COST = 100; // Fixed cost per order
+
+        // Validate: check if player has enough cash
+        if (this.state.cash < STOCK_COST) {
+            console.log('[GameState] Cannot order stock: insufficient funds');
+            return false;
+        }
+
+        // Deduct cost immediately
+        this.updateCash(this.state.cash - STOCK_COST);
+
+        // Delegate to IncomingStockSystem
+        const incomingStockSystem = (this as any).incomingStockSystem;
+        if (incomingStockSystem) {
+            incomingStockSystem.orderStock(amount, supplier);
+        }
+
+        return true;
     }
 
     isBankrupt(): boolean {

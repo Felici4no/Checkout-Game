@@ -3,7 +3,7 @@ import { GameState } from './game/GameState';
 import { TimeSystem } from './game/TimeSystem';
 import { EconomyEngine } from './game/EconomyEngine';
 import { EventSystem } from './game/EventSystem';
-import { StockBot } from './game/StockBot';
+import { IncomingStockSystem } from './game/IncomingStockSystem';
 import { MarketingSystem } from './game/MarketingSystem';
 import { CapacitySystem } from './game/CapacitySystem';
 // Challenge system disabled for infinite mode
@@ -28,7 +28,7 @@ class Game {
     private timeSystem: TimeSystem;
     private economyEngine: EconomyEngine;
     private eventSystem: EventSystem;
-    private stockBot: StockBot;
+    private incomingStockSystem: IncomingStockSystem;
     private marketingSystem: MarketingSystem;
     private capacitySystem: CapacitySystem;
     private challengeSystem: ChallengeSystem | null = null;
@@ -70,7 +70,7 @@ class Game {
 
         this.economyEngine = new EconomyEngine(this.gameState);
         this.eventSystem = new EventSystem(this.gameState, this.economyEngine);
-        this.stockBot = new StockBot(this.gameState);
+        this.incomingStockSystem = new IncomingStockSystem(this.gameState);
         this.marketingSystem = new MarketingSystem(this.gameState);
         this.capacitySystem = new CapacitySystem(this.gameState);
 
@@ -83,18 +83,19 @@ class Game {
         this.timeSystem.setEventSystem(this.eventSystem);
 
         // Connect systems
-        this.economyEngine.setStockBot(this.stockBot);
+        this.economyEngine.setIncomingStockSystem(this.incomingStockSystem);
         this.economyEngine.setMarketingSystem(this.marketingSystem);
         this.economyEngine.setCapacitySystem(this.capacitySystem);
 
         // Store systems in gameState for UI access
+        (this.gameState as any).incomingStockSystem = this.incomingStockSystem;
         (this.gameState as any).capacitySystem = this.capacitySystem;
         (this.gameState as any).economyEngine = this.economyEngine;
         // (this.gameState as any).challengeSystem = this.challengeSystem; // Disabled
 
         // Build UI
         this.desktop = new Desktop();
-        this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine, this.stockBot);
+        this.checkoutApp = new CheckoutApp(this.gameState, this.economyEngine);
         this.bankApp = new BankApp(this.gameState);
         this.marketingApp = new MarketingApp(this.gameState, this.marketingSystem);
         this.capacityApp = new CapacityApp(this.gameState, this.capacitySystem);
@@ -107,6 +108,11 @@ class Game {
 
     private setupUI(): void {
         const app = document.querySelector<HTMLDivElement>('#app')!;
+
+        console.log('[DEBUG] Setting up UI...');
+
+        // Clear onboarding screen
+        app.innerHTML = '';
 
         // Create monitor frame
         const monitorFrame = document.createElement('div');
@@ -137,6 +143,8 @@ class Game {
 
         monitorFrame.appendChild(monitorScreen);
         app.appendChild(monitorFrame);
+
+        console.log('[DEBUG] UI setup complete');
 
         // Get system clock reference from desktop
         const systemTray = this.desktopElement.querySelector('.system-tray');

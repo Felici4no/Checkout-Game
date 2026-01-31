@@ -1,5 +1,5 @@
 import { GameState } from './GameState';
-import { StockBot } from './StockBot';
+import { IncomingStockSystem } from './IncomingStockSystem';
 import { MarketingSystem } from './MarketingSystem';
 import { CapacitySystem } from './CapacitySystem';
 
@@ -48,7 +48,7 @@ export class EconomyEngine {
     private config: EconomyConfig;
     private supplier: SupplierType = 'fast';
     private reputationScore = 1.0; // 1.0 = Good, 0.5 = Average, 0.0 = Poor
-    private stockBot: StockBot | null = null;
+    private incomingStockSystem: IncomingStockSystem | null = null;
     private marketingSystem: MarketingSystem | null = null;
     private capacitySystem: CapacitySystem | null = null;
 
@@ -94,8 +94,8 @@ export class EconomyEngine {
         return this.supplier;
     }
 
-    setStockBot(stockBot: StockBot): void {
-        this.stockBot = stockBot;
+    setIncomingStockSystem(incomingStockSystem: IncomingStockSystem): void {
+        this.incomingStockSystem = incomingStockSystem;
     }
 
     setMarketingSystem(marketingSystem: MarketingSystem): void {
@@ -275,14 +275,6 @@ export class EconomyEngine {
             }
         }
 
-        // 17. Run StockBot automation (if installed)
-        if (this.stockBot && this.stockBot.isInstalled()) {
-            const result = this.stockBot.checkAndBuyStock();
-            if (result.reason) {
-                this.gameState.emit('stockbot-action');
-                (this.gameState as any).lastStockBotAction = result.reason;
-            }
-        }
     }
 
     adjustReputation(delta: number): void {
