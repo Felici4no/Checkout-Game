@@ -42,7 +42,7 @@ export class CheckoutApp {
         this.stockBot = stockBot;
         this.activityTicker = new ActivityTicker();
         this.window = new Window({
-            title: `${gameState.data.storeName} — Checkout`,
+            title: `${gameState.data.storeProfile.name} — Checkout`,
             width: 580,
             height: 560,
             x: 80,
@@ -74,27 +74,7 @@ export class CheckoutApp {
         header.appendChild(this.dayElement);
         header.appendChild(controls);
 
-        // Challenge indicator (collapsed by default)
-        const challengeIndicator = document.createElement('div');
-        challengeIndicator.id = 'challenge-indicator';
-        challengeIndicator.style.cssText = `
-      font-size: 7px;
-      padding: 4px 6px;
-      margin-bottom: 6px;
-      background: #F0F0F0;
-      border: 1px solid #A0A0A0;
-      cursor: pointer;
-      color: #606060;
-      display: none;
-    `;
-        challengeIndicator.innerHTML = '🎯 Desafio: Nenhum';
-
-        // Toggle expanded/collapsed on click
-        let expanded = false;
-        challengeIndicator.addEventListener('click', () => {
-            expanded = !expanded;
-            this.updateChallengeIndicator(expanded);
-        });
+        // Challenge indicator removed for infinite mode
 
         // Bankruptcy warning (hidden by default)
         this.bankruptcyWarningElement = document.createElement('div');
@@ -294,7 +274,7 @@ export class CheckoutApp {
         capacityIndicator.innerHTML = 'Cap: 20/d | Fila: 0';
 
         content.appendChild(header);
-        content.appendChild(challengeIndicator);
+        // content.appendChild(challengeIndicator); // Removed for infinite mode
         content.appendChild(this.bankruptcyWarningElement);
         content.appendChild(metricsGrid);
         content.appendChild(this.dailySummaryElement);

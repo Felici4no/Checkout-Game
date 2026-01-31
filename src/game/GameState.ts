@@ -24,8 +24,13 @@ export class EventEmitter {
 // Central game state
 export interface GameStateData {
     // Store info
-    storeName: string;
-    niche: string;
+    storeProfile: {
+        name: string;
+        domain: string;
+        niche?: string;
+    };
+    storeName: string; // Deprecated, kept for compatibility
+    niche: string; // Deprecated, kept for compatibility
 
     // Financial
     cash: number;
@@ -40,6 +45,9 @@ export interface GameStateData {
     dailyOrders: number;
     conversionRate: number;
     reputation: 'Good' | 'Average' | 'Poor';
+
+    // Trust system
+    trustScore: number;
 
     // Time
     currentDay: number;
@@ -59,8 +67,13 @@ export class GameState extends EventEmitter {
     constructor() {
         super();
         this.state = {
-            storeName: 'My Store',
-            niche: 'Electronics',
+            storeProfile: {
+                name: 'My Store',
+                domain: 'mystore',
+                niche: 'Electronics',
+            },
+            storeName: 'My Store', // Deprecated
+            niche: 'Electronics', // Deprecated
             cash: 500,
             debt: 0,
             stock: 50,
@@ -69,6 +82,7 @@ export class GameState extends EventEmitter {
             dailyOrders: 0,
             conversionRate: 0,
             reputation: 'Good',
+            trustScore: 10, // Start low
             currentDay: 1,
             isPaused: false,
             consecutiveNegativeDays: 0,
@@ -129,6 +143,19 @@ export class GameState extends EventEmitter {
         } else {
             this.state.consecutiveNegativeDays = 0;
         }
+    }
+
+    setStoreProfile(name: string, domain: string, niche?: string): void {
+        this.state.storeProfile = { name, domain, niche };
+        this.state.storeName = name; // Keep deprecated field in sync
+        if (niche) {
+            this.state.niche = niche;
+        }
+    }
+
+    setTrustScore(score: number): void {
+        this.state.trustScore = Math.max(0, Math.min(100, score));
+        this.emit('trust-changed');
     }
 
     isBankrupt(): boolean {

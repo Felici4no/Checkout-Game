@@ -6,7 +6,8 @@ import { EventSystem } from './game/EventSystem';
 import { StockBot } from './game/StockBot';
 import { MarketingSystem } from './game/MarketingSystem';
 import { CapacitySystem } from './game/CapacitySystem';
-import { ChallengeSystem, ChallengeType } from './game/ChallengeSystem';
+// Challenge system disabled for infinite mode
+// import { ChallengeSystem, ChallengeType } from './game/ChallengeSystem';
 import { Desktop } from './ui/Desktop';
 import { SystemClock } from './ui/SystemClock';
 import { DayProgressBar } from './ui/DayProgressBar';
@@ -14,8 +15,9 @@ import { DayTransitionOverlay } from './ui/DayTransitionOverlay';
 import { GameOverModal } from './ui/GameOverModal';
 import { EventPopup } from './ui/EventPopup';
 import { ViralPopup } from './ui/ViralPopup';
-import { VictoryModal } from './ui/VictoryModal';
-import { ChallengeSelector } from './ui/ChallengeSelector';
+// import { VictoryModal } from './ui/VictoryModal'; // Disabled
+// import { ChallengeSelector } from './ui/ChallengeSelector'; // Disabled
+import { StoreOnboarding } from './ui/StoreOnboarding';
 import { CheckoutApp } from './apps/CheckoutApp';
 import { BankApp } from './apps/BankApp';
 import { MarketingApp } from './apps/MarketingApp';
@@ -41,29 +43,37 @@ class Game {
     private dayTransitionOverlay: DayTransitionOverlay;
 
     constructor() {
-        // Show challenge selector first
-        this.showChallengeSelector();
+        // Show onboarding first
+        this.showStoreOnboarding();
     }
 
-    private showChallengeSelector(): void {
+    private showStoreOnboarding(): void {
         const app = document.querySelector<HTMLDivElement>('#app')!;
 
-        const selector = new ChallengeSelector((challenge: ChallengeType) => {
-            this.initializeGame(challenge);
+        const onboarding = new StoreOnboarding((storeName: string, domain: string) => {
+            this.initializeGame(storeName, domain);
         });
 
-        selector.show(app);
+        onboarding.show(app);
     }
 
-    private initializeGame(challenge: ChallengeType): void {
+    private initializeGame(storeName: string, domain: string): void {
         // Initialize core systems
         this.gameState = new GameState();
+
+        // Set store profile from onboarding
+        this.gameState.setStoreProfile(storeName, domain);
+
         this.economyEngine = new EconomyEngine(this.gameState);
         this.eventSystem = new EventSystem(this.gameState, this.economyEngine);
         this.stockBot = new StockBot(this.gameState);
         this.marketingSystem = new MarketingSystem(this.gameState);
         this.capacitySystem = new CapacitySystem(this.gameState);
-        this.challengeSystem = new ChallengeSystem(this.gameState, challenge);
+
+        // Challenge system disabled for infinite mode
+        // this.challengeSystem = new ChallengeSystem(this.gameState, 'none');
+        this.challengeSystem = null;
+
         this.timeSystem = new TimeSystem(this.gameState);
         this.timeSystem.setEconomyEngine(this.economyEngine);
         this.timeSystem.setEventSystem(this.eventSystem);
@@ -76,7 +86,7 @@ class Game {
         // Store systems in gameState for UI access
         (this.gameState as any).capacitySystem = this.capacitySystem;
         (this.gameState as any).economyEngine = this.economyEngine;
-        (this.gameState as any).challengeSystem = this.challengeSystem;
+        // (this.gameState as any).challengeSystem = this.challengeSystem; // Disabled
 
         // Build UI
         this.desktop = new Desktop();
@@ -192,10 +202,13 @@ class Game {
         // Listen for day changed (after economy processing)
         this.gameState.on('day-changed', () => {
             this.handleDayChanged();
-            this.checkVictory();
+            // Victory disabled for infinite mode
+            // this.checkVictory();
         });
     }
 
+    // Victory checking disabled for infinite mode
+    /*
     private checkVictory(): void {
         if (!this.challengeSystem || !this.challengeSystem.hasActiveChallenge()) return;
 
@@ -229,6 +242,7 @@ class Game {
 
         modal.show(this.desktopElement);
     }
+    */
 
     private updateDayProgress(): void {
         const progress = this.timeSystem.getProgress();
