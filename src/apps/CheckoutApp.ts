@@ -25,7 +25,7 @@ export class CheckoutApp {
     private supplierDisplay: HTMLElement | null = null;
     private dailySummaryElement: HTMLElement | null = null;
     private bankruptcyWarningElement: HTMLElement | null = null;
-    private stockBotButton: HTMLButtonElement | null = null;
+    private incomingStockElement: HTMLElement | null = null;
 
     // Previous values for animations
     private previousCash = 500;
@@ -344,8 +344,7 @@ export class CheckoutApp {
         this.gameState.on('pause-changed', () => this.updatePauseButton());
         this.gameState.on('price-changed', () => this.updatePriceDisplay());
         this.gameState.on('daily-summary', () => this.updateDailySummary());
-        this.gameState.on('stockbot-activated', () => this.updateStockBotButton());
-        this.gameState.on('stockbot-action', () => this.handleStockBotAction());
+        this.gameState.on('incoming-stock-changed', () => this.updateIncomingStock());
     }
 
     private startActivitySimulation(): void {
@@ -360,46 +359,31 @@ export class CheckoutApp {
     }
 
     private buyStock(): void {
-        if (this.gameState.data.cash >= 100) {
-            this.gameState.updateCash(-100);
-            this.gameState.updateStock(50);
-            this.activityTicker.addMessage('Estoque comprado: 50 unidades', 'success');
+        const STOCK_AMOUNT = 50;
+        const STOCK_COST = 100;
+
+        // Get current supplier
+        const supplier = this.economyEngine.getSupplier();
+
+        // Order stock via GameState (returns leadTimeDays: 1, 2, or 0 for failure)
+        const leadTimeDays = this.gameState.orderStock(STOCK_AMOUNT, supplier);
+
+        if (leadTimeDays > 0) {
+            // Success - build arrival message
+            const arrivalMsg = leadTimeDays === 1 ? 'chega amanhã' : 'chega em 2 dias';
+            this.activityTicker.addMessage(
+                `📦 Pedido de estoque: +${STOCK_AMOUNT} (${arrivalMsg})`,
+                'success'
+            );
         } else {
-            this.activityTicker.addMessage('Caixa insuficiente para comprar estoque', 'error');
+            // Failed - insufficient funds
+            this.activityTicker.addMessage(
+                'Caixa insuficiente para comprar estoque',
+                'error'
+            );
         }
     }
 
-    private buyStockBot(): void {
-        if (this.stockBot.isInstalled()) {
-            this.activityTicker.addMessage('StockBot já instalado', 'info');
-            return;
-        }
-
-        if (this.gameState.data.cash >= 250) {
-            this.gameState.updateCash(-250);
-            this.stockBot.activate();
-            this.activityTicker.addMessage('🤖 StockBot v1.0 instalado! Auto-compra ativada.', 'success');
-        } else {
-            this.activityTicker.addMessage('Caixa insuficiente para comprar StockBot', 'error');
-        }
-    }
-
-    private updateStockBotButton(): void {
-        if (!this.stockBotButton) return;
-
-        if (this.stockBot.isInstalled()) {
-            this.stockBotButton.textContent = '✓ Instalado';
-            this.stockBotButton.disabled = true;
-            this.stockBotButton.style.opacity = '0.5';
-        }
-    }
-
-    private handleStockBotAction(): void {
-        const action = (this.gameState as any).lastStockBotAction;
-        if (action) {
-            this.activityTicker.addMessage(action, action.includes('insuficiente') ? 'warning' : 'info');
-        }
-    }
 
     private adjustPrice(delta: number): void {
         const newPrice = this.gameState.data.price + delta;
