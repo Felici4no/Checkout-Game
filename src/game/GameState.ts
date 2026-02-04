@@ -175,7 +175,7 @@ export class GameState extends EventEmitter {
         }
 
         // Deduct cost immediately
-        this.updateCash(this.state.cash - STOCK_COST);
+        this.updateCash(-STOCK_COST);
 
         // Delegate to IncomingStockSystem
         const incomingStockSystem = (this as any).incomingStockSystem;

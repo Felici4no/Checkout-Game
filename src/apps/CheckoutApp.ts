@@ -8,7 +8,6 @@ export class CheckoutApp {
     private window: Window;
     private gameState: GameState;
     private economyEngine: EconomyEngine;
-    private marketingSystem: any;
     private activityTicker: ActivityTicker;
     private activityIntervalId: number | null = null;
 
@@ -25,7 +24,6 @@ export class CheckoutApp {
     private supplierDisplay: HTMLElement | null = null;
     private dailySummaryElement: HTMLElement | null = null;
     private bankruptcyWarningElement: HTMLElement | null = null;
-    private incomingStockElement: HTMLElement | null = null;
 
     // Previous values for animations
     private previousCash = 500;
@@ -225,29 +223,13 @@ export class CheckoutApp {
         supplierRow.appendChild(supplierLabel);
         supplierRow.appendChild(supplierControls);
 
-        // StockBot purchase
-        const stockBotRow = document.createElement('div');
-        stockBotRow.style.display = 'flex';
-        stockBotRow.style.justifyContent = 'space-between';
-        stockBotRow.style.alignItems = 'center';
-        stockBotRow.style.marginTop = '6px';
-        stockBotRow.style.paddingTop = '4px';
-        stockBotRow.style.borderTop = '1px solid #808080';
-        stockBotRow.style.fontSize = '11px';
-
-        const stockBotLabel = document.createElement('span');
-        stockBotLabel.innerHTML = '🤖 <strong>StockBot</strong><br><span style="font-size: 8px;">Auto < 20</span>';
-
-        this.stockBotButton = createButton('Comprar $250', () => this.buyStockBot());
-        stockBotRow.appendChild(stockBotLabel);
-        stockBotRow.appendChild(this.stockBotButton);
+        // StockBot removed in Etapa 3
 
         actionsPanel.appendChild(actionsTitle);
         actionsPanel.appendChild(buyStockRow);
         actionsPanel.appendChild(priceRow);
         actionsPanel.appendChild(supplierRow);
         actionsPanel.appendChild(this.supplierDisplay);
-        actionsPanel.appendChild(stockBotRow);
 
         // Activity ticker
         const activityLabel = document.createElement('div');
@@ -280,11 +262,7 @@ export class CheckoutApp {
         content.appendChild(activityLabel);
         content.appendChild(this.activityTicker.getElement());
 
-        // Update StockBot button state
-        this.updateStockBotButton();
-
-        // Update challenge indicator
-        this.updateChallengeIndicator(false);
+        // StockBot and challenge system disabled for infinite mode
     }
 
     private updateChallengeIndicator(expanded: boolean): void {
@@ -344,7 +322,6 @@ export class CheckoutApp {
         this.gameState.on('pause-changed', () => this.updatePauseButton());
         this.gameState.on('price-changed', () => this.updatePriceDisplay());
         this.gameState.on('daily-summary', () => this.updateDailySummary());
-        this.gameState.on('incoming-stock-changed', () => this.updateIncomingStock());
     }
 
     private startActivitySimulation(): void {
@@ -360,7 +337,6 @@ export class CheckoutApp {
 
     private buyStock(): void {
         const STOCK_AMOUNT = 50;
-        const STOCK_COST = 100;
 
         // Get current supplier
         const supplier = this.economyEngine.getSupplier();
